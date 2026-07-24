@@ -29,3 +29,5 @@ When branch protection is on, direct pushes to `main` should fail and PRs should
 ## Collaborators
 
 None required for MVP. If adding a reviewer later, grant least privilege and re-check branch protection (reviews required).
+
+<!-- CI smoke PR for ticket 0.5 — safe to merge -->
