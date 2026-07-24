@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+.goodput-user
+*.key
+*.pem
+secrets.*
+config.local.*
+
+# Local data / artifacts (never commit large or real runs)
+# Anchor to repo root so src/goodput/data/ is not ignored
+/data/
+/artifacts/
+/checkpoints/
+/runs/
+wandb/
+mlruns/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Docker leftovers
+docker-compose.override.yml

@@ -1,0 +1,9 @@
+# Runtime + CI dependencies (CPU-friendly PyTorch).
+# For CUDA, install the matching torch wheel from https://pytorch.org after this.
+
+pydantic>=2.0
+pydantic-settings>=2.0
+PyYAML>=6.0
+torch>=2.1
+pytest>=8.0
+ruff>=0.4

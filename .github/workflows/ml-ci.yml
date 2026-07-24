@@ -1,0 +1,45 @@
+name: ML smoke CI
+
+# Optional / heavier path — keep fast. Enable on PRs once Phase 1.9 lands.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/goodput/training/**"
+      - "src/goodput/models/**"
+      - "experiments/**"
+      - ".github/workflows/ml-ci.yml"
+
+jobs:
+  train-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Training smoke placeholder
+        env:
+          GOODPUT_CI_MODE: "1"
+          GOODPUT_DEVICE: cpu
+          GOODPUT_STEPS: "5"
+          GOODPUT_CHECKPOINT_PROVIDER: mock
+          GOODPUT_FAULT_PROVIDER: mock
+        run: |
+          # Phase 1.9 will replace this with a real ≤10-step train + NaN assert.
+          pytest -q tests/test_smoke.py tests/test_evaluation.py
+          python -c "from goodput import __version__; print('ml-ci ok', __version__)"

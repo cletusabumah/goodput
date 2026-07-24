@@ -1,0 +1,12 @@
+# Baseline experiment — Phase 1 wires the runner.
+name: baseline-naive
+seed: 42
+num_workers: 2
+steps: 50
+batch_size: 8
+hidden_size: 32
+learning_rate: 0.001
+ckpt_interval: 10
+ckpt_mode: naive
+fault_mode: none
+device: cpu
