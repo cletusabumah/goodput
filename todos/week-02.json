@@ -1,0 +1,56 @@
+{
+  "week": 2,
+  "phase": "Phase 1 — Toy trainer + naive checkpoint",
+  "goal": "Ship providers, synthetic data, single-process train, multi-process launch, and naive checkpoint save/restore (tickets 1.1–1.5).",
+  "label": "Week 2",
+  "tasks": [
+    {
+      "id": "providers",
+      "title": "Provider ABCs + mocks: Checkpoint, Fault, Metrics (ticket 1.1)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "data-loader",
+      "title": "Synthetic data loader + tiny fixtures (ticket 1.2)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "toy-train",
+      "title": "Toy model + single-process train smoke (ticket 1.3)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "multiprocess",
+      "title": "Multi-process worker launcher N=2 (ticket 1.4)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "naive-checkpoint",
+      "title": "Naive full checkpoint save/restore (ticket 1.5)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week2-learned",
+      "title": "Fill Week 2 section in docs/what_we_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
