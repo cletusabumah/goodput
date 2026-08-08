@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     checkpoint_provider: Literal["mock", "local_fs"] = "local_fs"
     fault_provider: Literal["mock", "process"] = "mock"
-    metrics_provider: Literal["json_file", "stdout"] = "json_file"
+    metrics_provider: Literal["json_file", "stdout", "mock"] = "json_file"
 
     tracker: Literal["none", "mlflow", "wandb"] = "none"
     ci_mode: bool = False

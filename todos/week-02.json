@@ -1,16 +1,16 @@
 {
   "week": 2,
-  "phase": "Phase 1 — Toy trainer + naive checkpoint",
-  "goal": "Ship providers, synthetic data, single-process train, multi-process launch, and naive checkpoint save/restore (tickets 1.1–1.5).",
+  "phase": "Phase 1 \u2014 Toy trainer + naive checkpoint",
+  "goal": "Ship providers, synthetic data, single-process train, multi-process launch, and naive checkpoint save/restore (tickets 1.1\u20131.5).",
   "label": "Week 2",
   "tasks": [
     {
       "id": "providers",
       "title": "Provider ABCs + mocks: Checkpoint, Fault, Metrics (ticket 1.1)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-08T01:33:29.997357+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "data-loader",
