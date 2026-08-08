@@ -1,6 +1,6 @@
 {
   "week": 1,
-  "phase": "Phase 0 — Foundation",
+  "phase": "Phase 0 \u2014 Foundation",
   "goal": "Ship private repo scaffold, populated docs, smoke tests, and green CI.",
   "label": "Week 1",
   "tasks": [
@@ -8,9 +8,9 @@
       "id": "git-init",
       "title": "Initialize private git repo + GitHub remote (ticket 0.1)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-04T23:57:04.400465+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "stack-readme",
@@ -46,11 +46,11 @@
     },
     {
       "id": "ci",
-      "title": "GitHub Actions CI — ruff + pytest on PR (ticket 0.5)",
+      "title": "GitHub Actions CI \u2014 ruff + pytest on PR (ticket 0.5)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-04T23:57:13.298678+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "data-protocol",
@@ -72,9 +72,9 @@
       "id": "github-access",
       "title": "2FA + branch protection checklist (ticket 0.1)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-05T00:11:36.217386+00:00",
+      "completed_by": "cletus"
     }
   ]
 }
