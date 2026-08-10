@@ -32,9 +32,9 @@
       "id": "multiprocess",
       "title": "Multi-process worker launcher N=2 (ticket 1.4)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-10T21:10:46.137673+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "naive-checkpoint",
