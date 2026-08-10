@@ -42,9 +42,16 @@ def _resolve_device(name: str) -> torch.device:
     return torch.device(name)
 
 
-def _batch_stream(batches: Iterable[Batch]) -> Iterator[Batch]:
-    """Cycle batches so short loaders can feed many steps."""
-    return cycle(batches)
+def _batch_stream(batches: Iterable[Batch], *, skip: int = 0) -> Iterator[Batch]:
+    """Cycle batches so short loaders can feed many steps.
+
+    ``skip`` advances past batches already consumed before ``start_step`` so
+    resume continues at the same position in the cycle as an uninterrupted run.
+    """
+    stream = cycle(batches)
+    for _ in range(skip):
+        next(stream)
+    return stream
 
 
 def train_steps(
@@ -74,7 +81,7 @@ def train_steps(
     model = model.to(device_t)
     model.train()
     criterion = nn.MSELoss()
-    stream = _batch_stream(batches)
+    stream = _batch_stream(batches, skip=start_step)
 
     losses: list[float] = []
     last_ckpt: int | None = None
