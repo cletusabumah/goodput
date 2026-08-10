@@ -1,11 +1,13 @@
-"""CLI entrypoint — single- and multi-process train (tickets 1.3–1.4)."""
+"""CLI entrypoint — train + naive checkpoints (tickets 1.3–1.5)."""
 
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from goodput import __version__
 from goodput.config import get_settings
+from goodput.providers import LocalFsCheckpointStore
 from goodput.training import (
     MultiProcessResult,
     train_from_settings,
@@ -30,6 +32,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Override GOODPUT_NUM_WORKERS (1=single-process, >=2=multiprocess)",
     )
     parser.add_argument(
+        "--ckpt-dir",
+        type=Path,
+        default=None,
+        help="Enable naive checkpoints under this directory (single-process)",
+    )
+    parser.add_argument(
         "--train",
         action="store_true",
         help="Run toy training (single- or multi-process)",
@@ -46,6 +54,8 @@ def main(argv: list[str] | None = None) -> int:
         updates["steps"] = args.steps
     if args.workers is not None:
         updates["num_workers"] = args.workers
+    if args.ckpt_dir is not None:
+        updates["ckpt_dir"] = args.ckpt_dir
     if updates:
         settings = settings.model_copy(update=updates)
 
@@ -60,10 +70,26 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.train:
         if settings.num_workers <= 1:
-            result = train_from_settings(settings)
+            store = None
+            if args.ckpt_dir is not None or settings.ckpt_interval > 0:
+                # Only persist when user asks via --ckpt-dir (avoids cluttering cwd).
+                if args.ckpt_dir is not None:
+                    store = LocalFsCheckpointStore(settings.ckpt_dir)
+            result = train_from_settings(settings, checkpoint_store=store)
+            ckpt_msg = (
+                f" last_ckpt={result.last_checkpoint_step}"
+                if result.last_checkpoint_step is not None
+                else ""
+            )
+            resume_msg = (
+                f" resumed_from={result.resumed_from_step}"
+                if result.resumed_from_step is not None
+                else ""
+            )
             print(
                 f"train ok={result.ok} steps={result.steps_completed} "
                 f"final_loss={result.final_loss:.6f} device={result.device}"
+                f"{ckpt_msg}{resume_msg}"
             )
             return 0 if result.ok else 1
 

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+import torch
 
 from goodput.providers.base import CheckpointPayload, CheckpointStore
 
@@ -19,8 +20,10 @@ class MockCheckpointStore(CheckpointStore):
         self._locator = "memory://latest"
 
     def save(self, payload: CheckpointPayload) -> Path | str:
+        # Deep-enough copy so later mutations don't rewrite history.
+        state = _clone_state(payload.state)
         self._history.append(
-            CheckpointPayload(step=payload.step, state=dict(payload.state), meta=dict(payload.meta))
+            CheckpointPayload(step=payload.step, state=state, meta=dict(payload.meta))
         )
         return self._locator
 
@@ -28,7 +31,11 @@ class MockCheckpointStore(CheckpointStore):
         if not self._history:
             raise FileNotFoundError("No checkpoint in mock store")
         latest = self._history[-1]
-        return CheckpointPayload(step=latest.step, state=dict(latest.state), meta=dict(latest.meta))
+        return CheckpointPayload(
+            step=latest.step,
+            state=_clone_state(latest.state),
+            meta=dict(latest.meta),
+        )
 
     def latest(self) -> Path | str | None:
         return self._locator if self._history else None
@@ -39,17 +46,21 @@ class MockCheckpointStore(CheckpointStore):
 
 
 class LocalFsCheckpointStore(CheckpointStore):
-    """JSON checkpoint files under a directory (toy state only — Phase 1)."""
+    """
+    Full checkpoint files under a directory via ``torch.save`` (.pt).
+
+    Replaces the earlier JSON store so model/optimizer tensors round-trip (ticket 1.5).
+    """
 
     name = "local_fs"
 
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
-        self._latest_path = self.root / "latest.json"
+        self._latest_path = self.root / "latest.pt"
 
     def _step_path(self, step: int) -> Path:
-        return self.root / f"step_{step:06d}.json"
+        return self.root / f"step_{step:06d}.pt"
 
     def save(self, payload: CheckpointPayload) -> Path | str:
         path = self._step_path(payload.step)
@@ -58,11 +69,8 @@ class LocalFsCheckpointStore(CheckpointStore):
             "state": payload.state,
             "meta": payload.meta,
         }
-        path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
-        self._latest_path.write_text(
-            json.dumps({"locator": str(path), "step": payload.step}, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        torch.save(body, path)
+        torch.save({"locator": str(path), "step": payload.step}, self._latest_path)
         return path
 
     def load(self, locator: Path | str | None = None) -> CheckpointPayload:
@@ -74,7 +82,7 @@ class LocalFsCheckpointStore(CheckpointStore):
             path = Path(latest)
         if not path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {path}")
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = torch.load(path, map_location="cpu", weights_only=False)
         return CheckpointPayload(
             step=int(data["step"]),
             state=dict(data.get("state", {})),
@@ -84,6 +92,18 @@ class LocalFsCheckpointStore(CheckpointStore):
     def latest(self) -> Path | str | None:
         if not self._latest_path.exists():
             return None
-        pointer = json.loads(self._latest_path.read_text(encoding="utf-8"))
-        locator = pointer.get("locator")
-        return locator
+        pointer = torch.load(self._latest_path, map_location="cpu", weights_only=False)
+        return pointer.get("locator")
+
+
+def _clone_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Clone nested state; clone tensors so history is immutable."""
+    out: dict[str, Any] = {}
+    for key, val in state.items():
+        if isinstance(val, torch.Tensor):
+            out[key] = val.detach().cpu().clone()
+        elif isinstance(val, dict):
+            out[key] = _clone_state(val)
+        else:
+            out[key] = val
+    return out

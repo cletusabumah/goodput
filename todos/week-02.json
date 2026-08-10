@@ -40,9 +40,9 @@
       "id": "naive-checkpoint",
       "title": "Naive full checkpoint save/restore (ticket 1.5)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-10T21:35:45.846296+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "week2-learned",
