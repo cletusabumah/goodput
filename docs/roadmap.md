@@ -24,4 +24,4 @@ gantt
   Phase 4 stretch           :p4, after p3, 7d
 ```
 
-Dates are relative to Phase 0 start; adjust `what_we_learned.md` weekly.
+Dates are relative to Phase 0 start; adjust `what_i_learned.md` weekly.

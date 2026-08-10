@@ -34,7 +34,7 @@ Adapted from the two-founder Pigeon workflow. There is **one owner**: Cletus. â€
 |-----|----------|
 | Start of week | Set `todos/week-NN.json` + point `todos/current.json`; write week goal |
 | During week | `gdone <task-id>` as tasks finish; small PRs |
-| End of week | Update `what_we_learned.md`; open next week file |
+| End of week | Update `what_i_learned.md`; open next week file |
 
 ## Commit hygiene
 
