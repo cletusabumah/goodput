@@ -46,11 +46,11 @@
     },
     {
       "id": "week2-learned",
-      "title": "Fill Week 2 section in docs/what_we_learned.md",
+      "title": "Fill Week 2 section in docs/what_i_learned.md",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-10T22:19:49.322980+00:00",
+      "completed_by": "cletus"
     }
   ]
 }

@@ -14,7 +14,7 @@ Read in this order for Phase 0 orientation:
 10. [`privacy-security.md`](privacy-security.md) + [`test-data-protocol.md`](test-data-protocol.md)
 11. [`github-access.md`](github-access.md) — 2FA + branch protection
 12. [`roadmap.md`](roadmap.md) — high-level phases
-13. [`what_we_learned.md`](what_we_learned.md) — weekly portfolio log
+13. [`what_i_learned.md`](what_i_learned.md) — weekly portfolio log
 
 ## Product / persona notes
 
