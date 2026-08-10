@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     steps: int = Field(default=100, ge=1)
     batch_size: int = Field(default=8, ge=1)
+    input_size: int = Field(default=16, ge=1)
     hidden_size: int = Field(default=32, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
 

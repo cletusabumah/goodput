@@ -26,7 +26,13 @@
 
 ## Regenerating fixtures
 
-Document regeneration commands next to fixtures when added (Phase 1.2). Until then, fixtures may be created by a small script under `scripts/`.
+```bash
+source .venv/bin/activate
+python scripts/generate_fixtures.py
+pytest -q tests/test_data_loaders.py
+```
+
+See `test-fixtures/README.md` for filenames and defaults.
 
 ## Consent
 
