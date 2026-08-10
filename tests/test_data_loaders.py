@@ -63,6 +63,13 @@ def test_iter_and_loader_lengths() -> None:
     assert torch.equal(got[0].inputs, list(loader)[0].inputs)
 
 
+def test_loader_rejects_invalid_num_batches() -> None:
+    with pytest.raises(ValueError, match="num_batches"):
+        SyntheticDataLoader(num_batches=0, batch_size=4, input_size=8, seed=0)
+    with pytest.raises(ValueError, match="num_batches"):
+        SyntheticDataLoader(num_batches=-1, batch_size=4, input_size=8, seed=0)
+
+
 def test_fixture_roundtrip(tmp_path: Path) -> None:
     batch = generate_synthetic_batch(batch_size=4, input_size=8, seed=11)
     path = save_batch_fixture(batch, tmp_path / "tiny.pt", seed=11)

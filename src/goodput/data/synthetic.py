@@ -103,6 +103,12 @@ class SyntheticDataLoader:
         noise_std: float = 0.1,
         device: torch.device | str = "cpu",
     ) -> None:
+        if num_batches < 1:
+            raise ValueError("num_batches must be >= 1")
+        if batch_size < 1:
+            raise ValueError("batch_size must be >= 1")
+        if input_size < 1:
+            raise ValueError("input_size must be >= 1")
         self.num_batches = num_batches
         self.batch_size = batch_size
         self.input_size = input_size
