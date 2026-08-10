@@ -1,0 +1,48 @@
+{
+  "week": 3,
+  "phase": "Phase 1 — Kill, metrics, experiment CLI, CI smoke",
+  "goal": "Close Phase 1: SIGKILL recovery path, goodput JSON reports, YAML-driven runs, and CI train smoke (tickets 1.6–1.9).",
+  "label": "Week 3",
+  "tasks": [
+    {
+      "id": "sigkill",
+      "title": "SIGKILL fault injector mid-run + recovery path (ticket 1.6)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "metrics-report",
+      "title": "Goodput + ckpt timing metrics JSON writer (ticket 1.7)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "baseline-config",
+      "title": "Experiment YAML + goodput-run --config produces report (ticket 1.8)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "ml-ci-smoke",
+      "title": "CI training smoke ≤10 steps; fail on NaN (ticket 1.9)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week3-learned",
+      "title": "Fill Week 3 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
