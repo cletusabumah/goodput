@@ -10,6 +10,8 @@ on:
       - "src/goodput/models/**"
       - "src/goodput/metrics/**"
       - "src/goodput/experiments/**"
+      - "src/goodput/providers/**"
+      - "src/goodput/checkpointing/**"
       - "src/goodput/cli.py"
       - "src/goodput/data/**"
       - "experiments/**"
