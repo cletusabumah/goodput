@@ -16,17 +16,17 @@
       "id": "metrics-report",
       "title": "Goodput + ckpt timing metrics JSON writer (ticket 1.7)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-12T06:14:05.665293+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "baseline-config",
       "title": "Experiment YAML + goodput-run --config produces report (ticket 1.8)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-12T06:13:43.678009+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "ml-ci-smoke",

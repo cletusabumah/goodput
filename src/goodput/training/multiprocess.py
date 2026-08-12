@@ -33,6 +33,8 @@ class WorkerResult:
     final_loss: float
     ok: bool
     error: str | None = None
+    ckpt_save_seconds: list[float] = field(default_factory=list)
+    last_checkpoint_step: int | None = None
 
 
 @dataclass
@@ -42,6 +44,8 @@ class MultiProcessResult:
     world_size: int
     steps: int
     workers: list[WorkerResult] = field(default_factory=list)
+    ckpt_save_seconds: list[float] = field(default_factory=list)
+    last_checkpoint_step: int | None = None
 
     @property
     def ok(self) -> bool:
@@ -118,6 +122,8 @@ def _worker_entry(
         stream = cycle(loader)
         model.train()
         last_loss = float("nan")
+        ckpt_save_seconds: list[float] = []
+        last_ckpt: int | None = None
 
         for step in range(steps):
             batch = next(stream).to(device)
@@ -142,7 +148,10 @@ def _worker_entry(
             if store is not None and (
                 completed % ckpt_interval == 0 or completed == steps
             ):
+                save_t0 = time.perf_counter()
                 store.save(capture_training_state(model, optimizer, step=completed))
+                ckpt_save_seconds.append(time.perf_counter() - save_t0)
+                last_ckpt = completed
 
             # Rank 0 publishes progress so the parent can schedule SIGKILL after a ckpt.
             if progress is not None and rank == 0:
@@ -159,6 +168,8 @@ def _worker_entry(
                 steps_completed=steps,
                 final_loss=last_loss,
                 ok=math.isfinite(last_loss),
+                ckpt_save_seconds=ckpt_save_seconds,
+                last_checkpoint_step=last_ckpt,
             )
         )
     except Exception as exc:  # noqa: BLE001 — surface to parent as WorkerResult
@@ -178,9 +189,13 @@ def launch_workers(
     world_size: int,
     steps: int,
     settings: Settings,
+    ckpt_dir: Path | str | None = None,
 ) -> MultiProcessResult:
     """
     Spawn ``world_size`` workers that run ``steps`` synchronized train steps.
+
+    When ``ckpt_dir`` is set and ``settings.ckpt_interval > 0``, rank 0 writes
+    naive checkpoints (same path the SIGKILL recovery demo uses).
 
     Uses the ``spawn`` start method so this stays safe on macOS and in pytest.
     """
@@ -200,12 +215,19 @@ def launch_workers(
 
     # Settings must be picklable — pass a plain dict into children.
     settings_dict = settings.model_dump(mode="json")
+    ckpt_interval = settings.ckpt_interval if ckpt_dir is not None else 0
+    if ckpt_dir is not None:
+        Path(ckpt_dir).mkdir(parents=True, exist_ok=True)
 
     processes: list[mp.Process] = []
     for rank in range(world_size):
         proc = ctx.Process(
             target=_worker_entry,
             args=(rank, world_size, steps, settings_dict, grad_bucket, barrier, result_queue),
+            kwargs={
+                "ckpt_dir": str(ckpt_dir) if (ckpt_dir is not None and rank == 0) else None,
+                "ckpt_interval": ckpt_interval,
+            },
             name=f"goodput-worker-{rank}",
         )
         proc.start()
@@ -222,17 +244,38 @@ def launch_workers(
             proc.join(timeout=5)
 
     workers.sort(key=lambda w: w.rank)
-    return MultiProcessResult(world_size=world_size, steps=steps, workers=workers)
+    rank0 = next((w for w in workers if w.rank == 0), None)
+    return MultiProcessResult(
+        world_size=world_size,
+        steps=steps,
+        workers=workers,
+        ckpt_save_seconds=list(rank0.ckpt_save_seconds) if rank0 else [],
+        last_checkpoint_step=rank0.last_checkpoint_step if rank0 else None,
+    )
 
 
-def train_multiprocess_from_settings(settings: Settings) -> MultiProcessResult | TrainResult:
+def train_multiprocess_from_settings(
+    settings: Settings,
+    *,
+    checkpoint: bool = False,
+) -> MultiProcessResult | TrainResult:
     """Use multi-process when num_workers > 1; otherwise single-process TrainResult."""
     from goodput.training.loop import train_from_settings
 
     if settings.num_workers <= 1:
-        return train_from_settings(settings)
+        store = None
+        if checkpoint and settings.ckpt_interval > 0:
+            from goodput.providers import LocalFsCheckpointStore
+
+            store = LocalFsCheckpointStore(settings.ckpt_dir)
+        return train_from_settings(settings, checkpoint_store=store)
+
+    ckpt_dir = None
+    if checkpoint and settings.ckpt_interval > 0:
+        ckpt_dir = settings.ckpt_dir
     return launch_workers(
         world_size=settings.num_workers,
         steps=settings.steps,
         settings=settings,
+        ckpt_dir=ckpt_dir,
     )
