@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import torch
 
 from goodput.checkpointing import capture_training_state, restore_training_state
@@ -12,6 +13,11 @@ from goodput.data import SyntheticDataLoader
 from goodput.models import ToyMLP
 from goodput.providers import LocalFsCheckpointStore, MockCheckpointStore
 from goodput.training import resume_after_crash, train_from_settings, train_steps
+
+
+def _batch_pool_size(steps: int) -> int:
+    """Mirror uninterrupted / resume loader sizing: max(1, min(steps, 16))."""
+    return max(1, min(steps, 16))
 
 
 def _tiny_settings(**overrides: object) -> Settings:
@@ -96,3 +102,70 @@ def test_mock_store_resume_path() -> None:
     resumed = resume_after_crash(settings=settings, checkpoint_store=store, remaining_steps=2)
     assert resumed.resumed_from_step == 6
     assert resumed.ok
+
+
+def test_resume_loader_pool_matches_uninterrupted_when_remaining_extends(
+    tmp_path: Path,
+) -> None:
+    """
+    Resume must not grow the batch cycle when remaining work past settings.steps.
+
+    Old bug: pool = max(steps, ckpt + remaining) changed cycle length vs
+    uninterrupted min(steps, 16), so skip landed on the wrong batches.
+    """
+    settings = _tiny_settings(steps=8, ckpt_interval=4, seed=3)
+    pool = _batch_pool_size(settings.steps)
+    assert pool == 8
+
+    store = LocalFsCheckpointStore(tmp_path / "ckpts")
+    device = "cpu"
+    torch.manual_seed(settings.seed)
+    model = ToyMLP(settings.input_size, settings.hidden_size)
+    opt = torch.optim.SGD(model.parameters(), lr=settings.learning_rate)
+    loader = SyntheticDataLoader(
+        num_batches=pool,
+        batch_size=settings.batch_size,
+        input_size=settings.input_size,
+        seed=settings.seed,
+        device=device,
+    )
+    first = train_steps(
+        model=model,
+        batches=loader,
+        optimizer=opt,
+        steps=4,
+        device=device,
+        checkpoint_store=store,
+        ckpt_interval=4,
+    )
+    assert first.last_checkpoint_step == 4
+
+    # remaining=6 → ckpt+remaining=10 > settings.steps=8 (old code grew pool to 10)
+    resumed = resume_after_crash(
+        settings=settings,
+        checkpoint_store=store,
+        remaining_steps=6,
+    )
+    assert resumed.resumed_from_step == 4
+    assert resumed.steps_completed == 6
+
+    # Uninterrupted 10 steps with the same 8-batch pool
+    torch.manual_seed(settings.seed)
+    model_b = ToyMLP(settings.input_size, settings.hidden_size)
+    opt_b = torch.optim.SGD(model_b.parameters(), lr=settings.learning_rate)
+    loader_b = SyntheticDataLoader(
+        num_batches=pool,
+        batch_size=settings.batch_size,
+        input_size=settings.input_size,
+        seed=settings.seed,
+        device=device,
+    )
+    baseline = train_steps(
+        model=model_b,
+        batches=loader_b,
+        optimizer=opt_b,
+        steps=10,
+        device=device,
+    )
+    for got, expected in zip(resumed.losses, baseline.losses[4:], strict=True):
+        assert got == pytest.approx(expected, rel=1e-5, abs=1e-5)

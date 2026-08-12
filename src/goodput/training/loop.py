@@ -99,8 +99,10 @@ def train_steps(
         losses.append(float(loss.item()))
 
         completed = step + 1  # steps done so far (1-based count of updates)
-        should_ckpt = checkpoint_store is not None and ckpt_interval > 0 and (
-            completed % ckpt_interval == 0 or completed == end_step
+        should_ckpt = (
+            checkpoint_store is not None
+            and ckpt_interval > 0
+            and (completed % ckpt_interval == 0 or completed == end_step)
         )
         if should_ckpt:
             assert checkpoint_store is not None
@@ -176,8 +178,10 @@ def resume_after_crash(
     payload = checkpoint_store.load()
     ckpt_step = restore_training_state(model, optimizer, payload, device=device)
 
+    # Keep the same cycling batch pool an uninterrupted run would have used,
+    # not a shorter pool sized only to ``remaining_steps``.
     loader = SyntheticDataLoader(
-        num_batches=max(1, min(remaining_steps, 16)),
+        num_batches=max(1, min(settings.steps, 16)),
         batch_size=settings.batch_size,
         input_size=settings.input_size,
         seed=settings.seed,
