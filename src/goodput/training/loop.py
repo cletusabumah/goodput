@@ -1,8 +1,9 @@
-"""Single-process toy training loop (tickets 1.3 + 1.5)."""
+"""Single-process toy training loop (tickets 1.3 + 1.5 + 1.7 timings)."""
 
 from __future__ import annotations
 
 import math
+import time
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from itertools import cycle
@@ -28,6 +29,11 @@ class TrainResult:
     device: str = "cpu"
     last_checkpoint_step: int | None = None
     resumed_from_step: int | None = None
+    # Ticket 1.7 — wall / useful / ckpt latencies for the metrics report.
+    wall_seconds: float = 0.0
+    useful_seconds: float = 0.0
+    ckpt_save_seconds: list[float] = field(default_factory=list)
+    ckpt_restore_seconds: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -85,9 +91,13 @@ def train_steps(
 
     losses: list[float] = []
     last_ckpt: int | None = None
+    ckpt_save_seconds: list[float] = []
+    useful_seconds = 0.0
     end_step = start_step + steps
+    wall_t0 = time.perf_counter()
 
     for step in range(start_step, end_step):
+        step_t0 = time.perf_counter()
         batch = next(stream).to(device_t)
         optimizer.zero_grad(set_to_none=True)
         preds = model(batch.inputs)
@@ -96,6 +106,7 @@ def train_steps(
             raise RuntimeError(f"Non-finite loss at step {step}: {loss.item()}")
         loss.backward()
         optimizer.step()
+        useful_seconds += time.perf_counter() - step_t0
         losses.append(float(loss.item()))
 
         completed = step + 1  # steps done so far (1-based count of updates)
@@ -106,8 +117,10 @@ def train_steps(
         )
         if should_ckpt:
             assert checkpoint_store is not None
+            save_t0 = time.perf_counter()
             payload = capture_training_state(model, optimizer, step=completed)
             checkpoint_store.save(payload)
+            ckpt_save_seconds.append(time.perf_counter() - save_t0)
             last_ckpt = completed
 
     return TrainResult(
@@ -117,6 +130,9 @@ def train_steps(
         device=str(device_t),
         last_checkpoint_step=last_ckpt,
         resumed_from_step=start_step if start_step > 0 else None,
+        wall_seconds=time.perf_counter() - wall_t0,
+        useful_seconds=useful_seconds,
+        ckpt_save_seconds=ckpt_save_seconds,
     )
 
 
@@ -140,11 +156,14 @@ def train_from_settings(
     optimizer = torch.optim.SGD(model.parameters(), lr=settings.learning_rate)
 
     start_step = 0
+    restore_s = 0.0
     if checkpoint_store is not None and checkpoint_store.latest() is not None:
+        restore_t0 = time.perf_counter()
         payload = checkpoint_store.load()
         start_step = restore_training_state(model, optimizer, payload, device=device)
+        restore_s = time.perf_counter() - restore_t0
 
-    return train_steps(
+    result = train_steps(
         model=model,
         batches=loader,
         optimizer=optimizer,
@@ -154,6 +173,11 @@ def train_from_settings(
         checkpoint_store=checkpoint_store,
         ckpt_interval=settings.ckpt_interval,
     )
+    result.ckpt_restore_seconds = restore_s
+    # Init / loader construction is warm-up: exclude from wall and useful
+    # (ml-strategy). Only restore + train loop count toward the report.
+    result.wall_seconds = result.wall_seconds + restore_s
+    return result
 
 
 def resume_after_crash(
@@ -175,8 +199,11 @@ def resume_after_crash(
     torch.manual_seed(settings.seed)  # rebuild graph; weights come from ckpt
     model = ToyMLP(input_size=settings.input_size, hidden_size=settings.hidden_size)
     optimizer = torch.optim.SGD(model.parameters(), lr=settings.learning_rate)
+
+    restore_t0 = time.perf_counter()
     payload = checkpoint_store.load()
     ckpt_step = restore_training_state(model, optimizer, payload, device=device)
+    restore_s = time.perf_counter() - restore_t0
 
     # Keep the same cycling batch pool an uninterrupted run would have used,
     # not a shorter pool sized only to ``remaining_steps``.
@@ -187,7 +214,7 @@ def resume_after_crash(
         seed=settings.seed,
         device=device,
     )
-    return train_steps(
+    result = train_steps(
         model=model,
         batches=loader,
         optimizer=optimizer,
@@ -197,6 +224,11 @@ def resume_after_crash(
         checkpoint_store=checkpoint_store,
         ckpt_interval=settings.ckpt_interval,
     )
+    result.ckpt_restore_seconds = restore_s
+    # Same warm-up policy as train_from_settings: exclude device/model/loader
+    # rebuild from wall; only restore + train loop count.
+    result.wall_seconds = result.wall_seconds + restore_s
+    return result
 
 
 def train_on_fixture(
