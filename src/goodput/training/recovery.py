@@ -38,6 +38,9 @@ class FaultRecoveryResult:
     pre_kill_workers_reaped: int
     recovered: TrainResult
     injected: list[tuple[int, int, str]]
+    # Ticket 1.7 — experiment-level timings for the JSON report.
+    wall_seconds: float = 0.0
+    useful_seconds: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -129,6 +132,7 @@ def run_sigkill_and_recover(
 
     settings_dict = settings.model_dump(mode="json")
     processes: list[mp.Process] = []
+    wall_t0 = time.perf_counter()
     try:
         for rank in range(world_size):
             proc = ctx.Process(
@@ -176,6 +180,8 @@ def run_sigkill_and_recover(
 
         # Pin latest → kill-at step so resume does not pick a newer racing ckpt.
         torch.save({"locator": str(step_path), "step": kill_at_step}, ckpt_dir / "latest.pt")
+        # Durable progress through kill_at counts as useful; kill→resume is waste.
+        useful_pre_kill = time.perf_counter() - wall_t0
         checkpoint_step = kill_at_step
         killed_pid = processes[kill_rank].pid
         injector.maybe_inject(kill_at_step, kill_rank)
@@ -200,6 +206,8 @@ def run_sigkill_and_recover(
             checkpoint_store=store,
             remaining_steps=remain,
         )
+        wall_seconds = time.perf_counter() - wall_t0
+        useful_seconds = useful_pre_kill + recovered.useful_seconds
 
         return FaultRecoveryResult(
             world_size=world_size,
@@ -210,6 +218,8 @@ def run_sigkill_and_recover(
             pre_kill_workers_reaped=reaped,
             recovered=recovered,
             injected=list(injector.injected),
+            wall_seconds=wall_seconds,
+            useful_seconds=useful_seconds,
         )
     finally:
         _reap_all(processes)
