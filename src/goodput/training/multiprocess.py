@@ -11,7 +11,9 @@ That is enough to simulate lockstep failure modes later (kill one worker → oth
 from __future__ import annotations
 
 import math
+import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -82,9 +84,17 @@ def _worker_entry(
     grad_bucket: torch.Tensor,
     barrier: mp.Barrier,
     result_queue: mp.Queue,
+    progress: Any | None = None,
+    ckpt_dir: str | None = None,
+    ckpt_interval: int = 0,
 ) -> None:
     """Child process target — must be top-level for spawn pickling."""
     try:
+        from itertools import cycle
+
+        from goodput.checkpointing import capture_training_state
+        from goodput.providers import LocalFsCheckpointStore
+
         settings = Settings(**settings_dict)
         device = _resolve_device(settings.device)
         # Same init seed → identical starting weights on every rank (like DDP broadcast).
@@ -92,6 +102,10 @@ def _worker_entry(
         model = ToyMLP(input_size=settings.input_size, hidden_size=settings.hidden_size).to(device)
         optimizer = torch.optim.SGD(model.parameters(), lr=settings.learning_rate)
         criterion = nn.MSELoss()
+
+        store = None
+        if ckpt_dir and rank == 0 and ckpt_interval > 0:
+            store = LocalFsCheckpointStore(Path(ckpt_dir))
 
         # Shard data by rank so workers are not trivial clones of the same batch stream.
         loader = SyntheticDataLoader(
@@ -101,8 +115,6 @@ def _worker_entry(
             seed=settings.seed + rank * 10_000,
             device=device,
         )
-        from itertools import cycle
-
         stream = cycle(loader)
         model.train()
         last_loss = float("nan")
@@ -125,6 +137,21 @@ def _worker_entry(
 
             optimizer.step()
             last_loss = float(loss.item())
+            completed = step + 1
+
+            if store is not None and (
+                completed % ckpt_interval == 0 or completed == steps
+            ):
+                store.save(capture_training_state(model, optimizer, step=completed))
+
+            # Rank 0 publishes progress so the parent can schedule SIGKILL after a ckpt.
+            if progress is not None and rank == 0:
+                with progress.get_lock():
+                    progress.value = completed
+                # Yield after publishing a checkpointed step so the parent can
+                # SIGKILL before the next all-reduce advances "latest".
+                if store is not None and completed % max(ckpt_interval, 1) == 0:
+                    time.sleep(0.25)
 
         result_queue.put(
             WorkerResult(

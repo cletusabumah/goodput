@@ -176,8 +176,11 @@ def resume_after_crash(
     payload = checkpoint_store.load()
     ckpt_step = restore_training_state(model, optimizer, payload, device=device)
 
+    # Keep the same cycling batch pool an uninterrupted run would have used,
+    # not a shorter pool sized only to ``remaining_steps``.
+    pool = max(settings.steps, ckpt_step + remaining_steps)
     loader = SyntheticDataLoader(
-        num_batches=max(1, min(remaining_steps, 16)),
+        num_batches=max(1, min(pool, 16)),
         batch_size=settings.batch_size,
         input_size=settings.input_size,
         seed=settings.seed,

@@ -1,4 +1,4 @@
-"""CLI entrypoint — train + naive checkpoints (tickets 1.3–1.5)."""
+"""CLI entrypoint — train, checkpoints, SIGKILL recovery (tickets 1.3–1.6)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from goodput.config import get_settings
 from goodput.providers import LocalFsCheckpointStore
 from goodput.training import (
     MultiProcessResult,
+    run_sigkill_and_recover,
     train_from_settings,
     train_multiprocess_from_settings,
 )
@@ -35,7 +36,30 @@ def main(argv: list[str] | None = None) -> int:
         "--ckpt-dir",
         type=Path,
         default=None,
-        help="Enable naive checkpoints under this directory (single-process)",
+        help="Checkpoint directory (required for --fault-kill)",
+    )
+    parser.add_argument(
+        "--ckpt-interval",
+        type=int,
+        default=None,
+        help="Override GOODPUT_CKPT_INTERVAL (steps between checkpoints)",
+    )
+    parser.add_argument(
+        "--fault-kill",
+        action="store_true",
+        help="SIGKILL one worker mid-run then resume from checkpoint (ticket 1.6)",
+    )
+    parser.add_argument(
+        "--fault-at",
+        type=int,
+        default=None,
+        help="Completed step at which to SIGKILL (must be a multiple of ckpt_interval)",
+    )
+    parser.add_argument(
+        "--fault-rank",
+        type=int,
+        default=1,
+        help="Worker rank to kill (default: 1, leave rank 0 as checkpointer)",
     )
     parser.add_argument(
         "--train",
@@ -56,6 +80,8 @@ def main(argv: list[str] | None = None) -> int:
         updates["num_workers"] = args.workers
     if args.ckpt_dir is not None:
         updates["ckpt_dir"] = args.ckpt_dir
+    if args.ckpt_interval is not None:
+        updates["ckpt_interval"] = args.ckpt_interval
     if updates:
         settings = settings.model_copy(update=updates)
 
@@ -68,13 +94,34 @@ def main(argv: list[str] | None = None) -> int:
         print(f"config={args.config} (YAML runner lands in ticket 1.8)")
         return 0
 
+    if args.fault_kill:
+        if args.ckpt_dir is None:
+            print("--fault-kill requires --ckpt-dir")
+            return 2
+        if args.fault_at is None:
+            print("--fault-kill requires --fault-at")
+            return 2
+        if settings.num_workers < 2:
+            settings = settings.model_copy(update={"num_workers": 2})
+        result = run_sigkill_and_recover(
+            settings,
+            ckpt_dir=args.ckpt_dir,
+            kill_at_step=args.fault_at,
+            kill_rank=args.fault_rank,
+        )
+        print(
+            f"fault-kill ok={result.ok} kill_rank={result.kill_rank} "
+            f"kill_at={result.kill_at_step} ckpt_step={result.checkpoint_step} "
+            f"recovered_steps={result.recovered.steps_completed} "
+            f"resumed_from={result.recovered.resumed_from_step}"
+        )
+        return 0 if result.ok else 1
+
     if args.train:
         if settings.num_workers <= 1:
             store = None
-            if args.ckpt_dir is not None or settings.ckpt_interval > 0:
-                # Only persist when user asks via --ckpt-dir (avoids cluttering cwd).
-                if args.ckpt_dir is not None:
-                    store = LocalFsCheckpointStore(settings.ckpt_dir)
+            if args.ckpt_dir is not None:
+                store = LocalFsCheckpointStore(settings.ckpt_dir)
             result = train_from_settings(settings, checkpoint_store=store)
             ckpt_msg = (
                 f" last_ckpt={result.last_checkpoint_step}"
@@ -107,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         return 0 if mp_result.ok else 1
 
-    print("Pass --train for a train run, or see docs/phase-1-tickets.md.")
+    print("Pass --train or --fault-kill, or see docs/phase-1-tickets.md.")
     return 0
 
 

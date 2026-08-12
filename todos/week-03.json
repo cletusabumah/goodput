@@ -1,16 +1,16 @@
 {
   "week": 3,
-  "phase": "Phase 1 — Kill, metrics, experiment CLI, CI smoke",
-  "goal": "Close Phase 1: SIGKILL recovery path, goodput JSON reports, YAML-driven runs, and CI train smoke (tickets 1.6–1.9).",
+  "phase": "Phase 1 \u2014 Kill, metrics, experiment CLI, CI smoke",
+  "goal": "Close Phase 1: SIGKILL recovery path, goodput JSON reports, YAML-driven runs, and CI train smoke (tickets 1.6\u20131.9).",
   "label": "Week 3",
   "tasks": [
     {
       "id": "sigkill",
       "title": "SIGKILL fault injector mid-run + recovery path (ticket 1.6)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-12T03:28:56.057315+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "metrics-report",
@@ -30,7 +30,7 @@
     },
     {
       "id": "ml-ci-smoke",
-      "title": "CI training smoke ≤10 steps; fail on NaN (ticket 1.9)",
+      "title": "CI training smoke \u226410 steps; fail on NaN (ticket 1.9)",
       "owner": "cletus",
       "done": false,
       "completed_at": null,
