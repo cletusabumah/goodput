@@ -1,0 +1,19 @@
+# CI training smoke — ≤10 steps, CPU, no faults (ticket 1.9).
+# Run: goodput-run --config experiments/ci-smoke.yaml
+name: ci-smoke
+mode: train
+seed: 42
+num_workers: 1
+steps: 8
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+ckpt_interval: 4
+ckpt_mode: naive
+ckpt_dir: artifacts/checkpoints/ci-smoke
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
+ci_mode: true

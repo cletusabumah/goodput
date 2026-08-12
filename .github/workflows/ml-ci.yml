@@ -1,6 +1,6 @@
 name: ML smoke CI
 
-# Optional / heavier path — keep fast. Enable on PRs once Phase 1.9 lands.
+# Ticket 1.9 — short CPU train smoke; fails on NaN / bad report.
 on:
   workflow_dispatch:
   pull_request:
@@ -8,7 +8,14 @@ on:
     paths:
       - "src/goodput/training/**"
       - "src/goodput/models/**"
+      - "src/goodput/metrics/**"
+      - "src/goodput/experiments/**"
+      - "src/goodput/providers/**"
+      - "src/goodput/checkpointing/**"
+      - "src/goodput/cli.py"
+      - "src/goodput/data/**"
       - "experiments/**"
+      - "tests/test_ml_ci_smoke.py"
       - ".github/workflows/ml-ci.yml"
 
 jobs:
@@ -32,14 +39,58 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Training smoke placeholder
+      - name: Unit smoke (finite loss + NaN guard)
         env:
           GOODPUT_CI_MODE: "1"
           GOODPUT_DEVICE: cpu
-          GOODPUT_STEPS: "5"
+          GOODPUT_CHECKPOINT_PROVIDER: mock
+          GOODPUT_FAULT_PROVIDER: mock
+        run: pytest -q tests/test_ml_ci_smoke.py
+
+      - name: Train ≤10 steps via experiment YAML
+        env:
+          GOODPUT_CI_MODE: "1"
+          GOODPUT_DEVICE: cpu
           GOODPUT_CHECKPOINT_PROVIDER: mock
           GOODPUT_FAULT_PROVIDER: mock
         run: |
-          # Phase 1.9 will replace this with a real ≤10-step train + NaN assert.
-          pytest -q tests/test_smoke.py tests/test_evaluation.py
-          python -c "from goodput import __version__; print('ml-ci ok', __version__)"
+          goodput-run --config experiments/ci-smoke.yaml
+          python - <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+
+          path = Path("artifacts/reports/ci-smoke/report.json")
+          if not path.is_file():
+              print(f"missing report: {path}", file=sys.stderr)
+              sys.exit(1)
+          data = json.loads(path.read_text(encoding="utf-8"))
+          required = (
+              "goodput",
+              "ckpt_save_s",
+              "ckpt_restore_s",
+              "wasted_gpu_hours",
+              "final_loss",
+              "steps_completed",
+          )
+          missing = [k for k in required if k not in data]
+          if missing:
+              print(f"missing keys: {missing}", file=sys.stderr)
+              sys.exit(1)
+          if not (0.0 <= float(data["goodput"]) <= 1.0):
+              print(f"goodput out of range: {data['goodput']}", file=sys.stderr)
+              sys.exit(1)
+          if not math.isfinite(float(data["final_loss"])):
+              print(f"non-finite final_loss: {data['final_loss']}", file=sys.stderr)
+              sys.exit(1)
+          if int(data["steps_completed"]) > 10:
+              print(f"steps_completed > 10: {data['steps_completed']}", file=sys.stderr)
+              sys.exit(1)
+          print(
+              "ml-ci smoke ok",
+              f"goodput={data['goodput']:.4f}",
+              f"final_loss={data['final_loss']:.6f}",
+              f"steps={data['steps_completed']}",
+          )
+          PY
