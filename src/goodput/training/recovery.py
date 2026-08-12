@@ -62,8 +62,7 @@ def _wait_for_progress(
             return
         if processes and all(not p.is_alive() for p in processes):
             raise RuntimeError(
-                f"all workers exited before reaching step {target} "
-                f"(progress={progress.value})"
+                f"all workers exited before reaching step {target} (progress={progress.value})"
             )
         time.sleep(0.02)
     raise TimeoutError(f"progress stuck at {progress.value}, wanted {target}")
@@ -130,85 +129,87 @@ def run_sigkill_and_recover(
 
     settings_dict = settings.model_dump(mode="json")
     processes: list[mp.Process] = []
-    for rank in range(world_size):
-        proc = ctx.Process(
-            target=_worker_entry,
-            args=(
-                rank,
-                world_size,
-                settings.steps,
-                settings_dict,
-                grad_bucket,
-                barrier,
-                result_queue,
-            ),
-            kwargs={
-                "progress": progress,
-                "ckpt_dir": str(ckpt_dir) if rank == 0 else None,
-                "ckpt_interval": settings.ckpt_interval,
-            },
-            name=f"goodput-worker-{rank}",
+    try:
+        for rank in range(world_size):
+            proc = ctx.Process(
+                target=_worker_entry,
+                args=(
+                    rank,
+                    world_size,
+                    settings.steps,
+                    settings_dict,
+                    grad_bucket,
+                    barrier,
+                    result_queue,
+                ),
+                kwargs={
+                    "progress": progress,
+                    "ckpt_dir": str(ckpt_dir) if rank == 0 else None,
+                    "ckpt_interval": settings.ckpt_interval,
+                },
+                name=f"goodput-worker-{rank}",
+            )
+            proc.start()
+            processes.append(proc)
+
+        injector = ProcessFaultInjector(
+            inject_at=kill_at_step,
+            fault="kill",
+            dry_run=False,
         )
-        proc.start()
-        processes.append(proc)
+        for rank, proc in enumerate(processes):
+            if proc.pid is not None:
+                injector.register_worker(rank, proc.pid)
 
-    injector = ProcessFaultInjector(
-        inject_at=kill_at_step,
-        fault="kill",
-        dry_run=False,
-    )
-    for rank, proc in enumerate(processes):
-        if proc.pid is not None:
-            injector.register_worker(rank, proc.pid)
+        _wait_for_progress(progress, kill_at_step, processes)
 
-    _wait_for_progress(progress, kill_at_step, processes)
+        # Wait for the *specific* kill-at checkpoint file (not merely "latest",
+        # which can race ahead if rank 0 keeps training).
+        step_path = ckpt_dir / f"step_{kill_at_step:06d}.pt"
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            if step_path.exists():
+                break
+            time.sleep(0.02)
+        else:
+            raise TimeoutError(f"checkpoint missing: {step_path}")
 
-    # Wait for the *specific* kill-at checkpoint file (not merely "latest",
-    # which can race ahead if rank 0 keeps training).
-    step_path = ckpt_dir / f"step_{kill_at_step:06d}.pt"
-    deadline = time.monotonic() + 10.0
-    while time.monotonic() < deadline:
-        if step_path.exists():
-            break
-        time.sleep(0.02)
-    else:
+        # Pin latest → kill-at step so resume does not pick a newer racing ckpt.
+        torch.save({"locator": str(step_path), "step": kill_at_step}, ckpt_dir / "latest.pt")
+        checkpoint_step = kill_at_step
+        killed_pid = processes[kill_rank].pid
+        injector.maybe_inject(kill_at_step, kill_rank)
+
+        # Peer workers are likely blocked on the next barrier — reap the job.
+        reaped = _reap_all(processes)
+
+        # Drain any late queue messages (best-effort).
+        while not result_queue.empty():
+            try:
+                result_queue.get_nowait()
+            except Exception:  # noqa: BLE001
+                break
+
+        remain = (
+            remaining_steps
+            if remaining_steps is not None
+            else max(1, settings.steps - checkpoint_step)
+        )
+        recovered = resume_after_crash(
+            settings=settings,
+            checkpoint_store=store,
+            remaining_steps=remain,
+        )
+
+        return FaultRecoveryResult(
+            world_size=world_size,
+            kill_rank=kill_rank,
+            kill_at_step=kill_at_step,
+            checkpoint_step=checkpoint_step,
+            killed_pid=killed_pid,
+            pre_kill_workers_reaped=reaped,
+            recovered=recovered,
+            injected=list(injector.injected),
+        )
+    finally:
         _reap_all(processes)
-        raise TimeoutError(f"checkpoint missing: {step_path}")
-
-    # Pin latest → kill-at step so resume does not pick a newer racing ckpt.
-    torch.save({"locator": str(step_path), "step": kill_at_step}, ckpt_dir / "latest.pt")
-    checkpoint_step = kill_at_step
-    killed_pid = processes[kill_rank].pid
-    injector.maybe_inject(kill_at_step, kill_rank)
-
-    # Peer workers are likely blocked on the next barrier — reap the job.
-    reaped = _reap_all(processes)
-
-    # Drain any late queue messages (best-effort).
-    while not result_queue.empty():
-        try:
-            result_queue.get_nowait()
-        except Exception:  # noqa: BLE001
-            break
-
-    remain = (
-        remaining_steps
-        if remaining_steps is not None
-        else max(1, settings.steps - checkpoint_step)
-    )
-    recovered = resume_after_crash(
-        settings=settings,
-        checkpoint_store=store,
-        remaining_steps=remain,
-    )
-
-    return FaultRecoveryResult(
-        world_size=world_size,
-        kill_rank=kill_rank,
-        kill_at_step=kill_at_step,
-        checkpoint_step=checkpoint_step,
-        killed_pid=killed_pid,
-        pre_kill_workers_reaped=reaped,
-        recovered=recovered,
-        injected=list(injector.injected),
-    )
