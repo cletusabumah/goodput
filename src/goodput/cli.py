@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, checkpoints, SIGKILL recovery, metrics report (1.3–1.7)."""
+"""CLI entrypoint — train, checkpoints, SIGKILL recovery, YAML experiments (1.3–1.8)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.experiments import load_experiment_yaml
 from goodput.metrics import build_run_report, emit_run_report
 from goodput.providers import LocalFsCheckpointStore, build_providers
 from goodput.providers.metrics import JsonFileMetricsSink
@@ -32,6 +33,15 @@ def _emit_and_announce(settings: Settings, report: dict[str, Any]) -> Path | Non
         return path
     print("report=emitted")
     return None
+
+
+def _print_metrics(report: dict[str, Any]) -> None:
+    print(
+        f"goodput={report['goodput']:.4f} "
+        f"ckpt_save_s={report['ckpt_save_s']:.6f} "
+        f"ckpt_restore_s={report['ckpt_restore_s']:.6f} "
+        f"wasted_gpu_hours={report['wasted_gpu_hours']:.6f}"
+    )
 
 
 def _report_from_train(settings: Settings, result: TrainResult) -> dict[str, Any]:
@@ -72,6 +82,100 @@ def _report_from_fault(settings: Settings, result: FaultRecoveryResult) -> dict[
     )
 
 
+def _run_train(settings: Settings, *, use_checkpoint_store: bool) -> int:
+    if settings.num_workers <= 1:
+        store = LocalFsCheckpointStore(settings.ckpt_dir) if use_checkpoint_store else None
+        result = train_from_settings(settings, checkpoint_store=store)
+        ckpt_msg = (
+            f" last_ckpt={result.last_checkpoint_step}"
+            if result.last_checkpoint_step is not None
+            else ""
+        )
+        resume_msg = (
+            f" resumed_from={result.resumed_from_step}"
+            if result.resumed_from_step is not None
+            else ""
+        )
+        print(
+            f"train ok={result.ok} steps={result.steps_completed} "
+            f"final_loss={result.final_loss:.6f} device={result.device}"
+            f"{ckpt_msg}{resume_msg}"
+        )
+        report = _report_from_train(settings, result)
+        _emit_and_announce(settings, report)
+        _print_metrics(report)
+        return 0 if result.ok else 1
+
+    wall_t0 = time.perf_counter()
+    mp_result = train_multiprocess_from_settings(settings)
+    wall_s = time.perf_counter() - wall_t0
+    assert isinstance(mp_result, MultiProcessResult)
+    print(
+        f"train ok={mp_result.ok} workers={mp_result.world_size} "
+        f"steps={mp_result.steps} final_loss={mp_result.final_loss:.6f}"
+    )
+    for w in mp_result.workers:
+        err = f" error={w.error}" if w.error else ""
+        print(
+            f"  rank={w.rank} ok={w.ok} steps={w.steps_completed} "
+            f"final_loss={w.final_loss:.6f}{err}"
+        )
+    report = build_run_report(
+        settings=settings,
+        wall_seconds=max(wall_s, 1e-9),
+        useful_seconds=max(wall_s, 1e-9),
+        steps_completed=mp_result.steps,
+        final_loss=mp_result.final_loss,
+        extra={"mode": "train_multiprocess"},
+    )
+    _emit_and_announce(settings, report)
+    _print_metrics(report)
+    return 0 if mp_result.ok else 1
+
+
+def _run_fault_kill(
+    settings: Settings,
+    *,
+    kill_at_step: int,
+    kill_rank: int,
+) -> int:
+    if settings.num_workers < 2:
+        settings = settings.model_copy(update={"num_workers": 2})
+    result = run_sigkill_and_recover(
+        settings,
+        ckpt_dir=settings.ckpt_dir,
+        kill_at_step=kill_at_step,
+        kill_rank=kill_rank,
+    )
+    print(
+        f"fault-kill ok={result.ok} kill_rank={result.kill_rank} "
+        f"kill_at={result.kill_at_step} ckpt_step={result.checkpoint_step} "
+        f"recovered_steps={result.recovered.steps_completed} "
+        f"resumed_from={result.recovered.resumed_from_step}"
+    )
+    report = _report_from_fault(settings, result)
+    _emit_and_announce(settings, report)
+    _print_metrics(report)
+    return 0 if result.ok else 1
+
+
+def _apply_cli_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
+    updates: dict[str, Any] = {}
+    if args.steps is not None:
+        updates["steps"] = args.steps
+    if args.workers is not None:
+        updates["num_workers"] = args.workers
+    if args.ckpt_dir is not None:
+        updates["ckpt_dir"] = args.ckpt_dir
+    if args.ckpt_interval is not None:
+        updates["ckpt_interval"] = args.ckpt_interval
+    if args.run_name is not None:
+        updates["run_name"] = args.run_name
+    if updates:
+        return settings.model_copy(update=updates)
+    return settings
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="goodput-run", description="Goodput simulator")
     parser.add_argument("--version", action="store_true", help="Print version and exit")
@@ -80,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         "--steps",
         type=int,
         default=None,
-        help="Override GOODPUT_STEPS for a short local run",
+        help="Override GOODPUT_STEPS / YAML steps",
     )
     parser.add_argument(
         "--workers",
@@ -92,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         "--ckpt-dir",
         type=Path,
         default=None,
-        help="Checkpoint directory (required for --fault-kill)",
+        help="Checkpoint directory (required for --fault-kill without YAML)",
     )
     parser.add_argument(
         "--ckpt-interval",
@@ -120,8 +224,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--fault-rank",
         type=int,
-        default=1,
-        help="Worker rank to kill (default: 1, leave rank 0 as checkpointer)",
+        default=None,
+        help="Worker rank to kill (default: 1, or YAML fault_rank)",
     )
     parser.add_argument(
         "--train",
@@ -134,29 +238,33 @@ def main(argv: list[str] | None = None) -> int:
         print(__version__)
         return 0
 
-    settings = get_settings()
-    updates: dict = {}
-    if args.steps is not None:
-        updates["steps"] = args.steps
-    if args.workers is not None:
-        updates["num_workers"] = args.workers
-    if args.ckpt_dir is not None:
-        updates["ckpt_dir"] = args.ckpt_dir
-    if args.ckpt_interval is not None:
-        updates["ckpt_interval"] = args.ckpt_interval
-    if args.run_name is not None:
-        updates["run_name"] = args.run_name
-    if updates:
-        settings = settings.model_copy(update=updates)
+    if args.config:
+        try:
+            spec = load_experiment_yaml(args.config)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"config error: {exc}")
+            return 2
+        settings = _apply_cli_overrides(spec.settings, args)
+        print(
+            f"goodput {__version__} | device={settings.device} "
+            f"workers={settings.num_workers} ckpt_mode={settings.ckpt_mode}"
+        )
+        print(f"config={spec.path}")
+        if spec.mode == "fault_kill":
+            kill_at = args.fault_at if args.fault_at is not None else spec.fault_at
+            if kill_at is None:
+                print("fault_kill requires fault_at in YAML or --fault-at")
+                return 2
+            kill_rank = args.fault_rank if args.fault_rank is not None else spec.fault_rank
+            return _run_fault_kill(settings, kill_at_step=kill_at, kill_rank=kill_rank)
+        # YAML train path always checkpoints when ckpt_interval > 0.
+        return _run_train(settings, use_checkpoint_store=settings.ckpt_interval > 0)
 
+    settings = _apply_cli_overrides(get_settings(), args)
     print(
         f"goodput {__version__} | device={settings.device} "
         f"workers={settings.num_workers} ckpt_mode={settings.ckpt_mode}"
     )
-
-    if args.config:
-        print(f"config={args.config} (YAML runner lands in ticket 1.8)")
-        return 0
 
     if args.fault_kill:
         if args.ckpt_dir is None:
@@ -165,96 +273,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.fault_at is None:
             print("--fault-kill requires --fault-at")
             return 2
-        if settings.num_workers < 2:
-            settings = settings.model_copy(update={"num_workers": 2})
-        result = run_sigkill_and_recover(
+        kill_rank = args.fault_rank if args.fault_rank is not None else 1
+        return _run_fault_kill(
             settings,
-            ckpt_dir=args.ckpt_dir,
             kill_at_step=args.fault_at,
-            kill_rank=args.fault_rank,
+            kill_rank=kill_rank,
         )
-        print(
-            f"fault-kill ok={result.ok} kill_rank={result.kill_rank} "
-            f"kill_at={result.kill_at_step} ckpt_step={result.checkpoint_step} "
-            f"recovered_steps={result.recovered.steps_completed} "
-            f"resumed_from={result.recovered.resumed_from_step}"
-        )
-        report = _report_from_fault(settings, result)
-        _emit_and_announce(settings, report)
-        print(
-            f"goodput={report['goodput']:.4f} "
-            f"ckpt_save_s={report['ckpt_save_s']:.6f} "
-            f"ckpt_restore_s={report['ckpt_restore_s']:.6f} "
-            f"wasted_gpu_hours={report['wasted_gpu_hours']:.6f}"
-        )
-        return 0 if result.ok else 1
 
     if args.train:
-        if settings.num_workers <= 1:
-            store = None
-            if args.ckpt_dir is not None:
-                store = LocalFsCheckpointStore(settings.ckpt_dir)
-            result = train_from_settings(settings, checkpoint_store=store)
-            ckpt_msg = (
-                f" last_ckpt={result.last_checkpoint_step}"
-                if result.last_checkpoint_step is not None
-                else ""
-            )
-            resume_msg = (
-                f" resumed_from={result.resumed_from_step}"
-                if result.resumed_from_step is not None
-                else ""
-            )
-            print(
-                f"train ok={result.ok} steps={result.steps_completed} "
-                f"final_loss={result.final_loss:.6f} device={result.device}"
-                f"{ckpt_msg}{resume_msg}"
-            )
-            report = _report_from_train(settings, result)
-            _emit_and_announce(settings, report)
-            print(
-                f"goodput={report['goodput']:.4f} "
-                f"ckpt_save_s={report['ckpt_save_s']:.6f} "
-                f"ckpt_restore_s={report['ckpt_restore_s']:.6f} "
-                f"wasted_gpu_hours={report['wasted_gpu_hours']:.6f}"
-            )
-            return 0 if result.ok else 1
+        use_store = args.ckpt_dir is not None
+        return _run_train(settings, use_checkpoint_store=use_store)
 
-        wall_t0 = time.perf_counter()
-        mp_result = train_multiprocess_from_settings(settings)
-        wall_s = time.perf_counter() - wall_t0
-        assert isinstance(mp_result, MultiProcessResult)
-        print(
-            f"train ok={mp_result.ok} workers={mp_result.world_size} "
-            f"steps={mp_result.steps} final_loss={mp_result.final_loss:.6f}"
-        )
-        for w in mp_result.workers:
-            err = f" error={w.error}" if w.error else ""
-            print(
-                f"  rank={w.rank} ok={w.ok} steps={w.steps_completed} "
-                f"final_loss={w.final_loss:.6f}{err}"
-            )
-        # Uninterrupted multi-process: treat wall ≈ useful (no failure window).
-        # Fine-grained ckpt timers land when workers report them; fault-kill path
-        # already measures restore + post-resume useful time.
-        report = build_run_report(
-            settings=settings,
-            wall_seconds=max(wall_s, 1e-9),
-            useful_seconds=max(wall_s, 1e-9),
-            steps_completed=mp_result.steps,
-            final_loss=mp_result.final_loss,
-            extra={"mode": "train_multiprocess"},
-        )
-        _emit_and_announce(settings, report)
-        print(
-            f"goodput={report['goodput']:.4f} "
-            f"ckpt_save_s={report['ckpt_save_s']:.6f} "
-            f"ckpt_restore_s={report['ckpt_restore_s']:.6f} "
-            f"wasted_gpu_hours={report['wasted_gpu_hours']:.6f}"
-        )
-        return 0 if mp_result.ok else 1
-
-    print("Pass --train or --fault-kill, or see docs/phase-1-tickets.md.")
+    print("Pass --train, --fault-kill, or --config, or see docs/phase-1-tickets.md.")
     return 0
 
 
