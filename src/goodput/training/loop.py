@@ -195,7 +195,6 @@ def resume_after_crash(
     if checkpoint_store.latest() is None:
         raise FileNotFoundError("no checkpoint to resume from")
 
-    wall_t0 = time.perf_counter()
     device = _resolve_device(settings.device)
     torch.manual_seed(settings.seed)  # rebuild graph; weights come from ckpt
     model = ToyMLP(input_size=settings.input_size, hidden_size=settings.hidden_size)
@@ -226,7 +225,9 @@ def resume_after_crash(
         ckpt_interval=settings.ckpt_interval,
     )
     result.ckpt_restore_seconds = restore_s
-    result.wall_seconds = time.perf_counter() - wall_t0
+    # Same warm-up policy as train_from_settings: exclude device/model/loader
+    # rebuild from wall; only restore + train loop count.
+    result.wall_seconds = result.wall_seconds + restore_s
     return result
 
 

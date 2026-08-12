@@ -148,3 +148,11 @@ def test_resume_records_restore_latency(tmp_path: Path) -> None:
     assert resumed.ok
     assert resumed.ckpt_restore_seconds > 0
     assert resumed.resumed_from_step == 6
+    # wall = restore + train loop only (warm-up excluded, same as train_from_settings)
+    accounted = (
+        resumed.ckpt_restore_seconds
+        + resumed.useful_seconds
+        + sum(resumed.ckpt_save_seconds)
+    )
+    assert resumed.wall_seconds >= accounted - 1e-3
+    assert resumed.wall_seconds - accounted < 0.05
