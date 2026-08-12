@@ -16,9 +16,9 @@
       "id": "metrics-report",
       "title": "Goodput + ckpt timing metrics JSON writer (ticket 1.7)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-12T06:02:57.544994+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "baseline-config",
