@@ -107,12 +107,20 @@ def _run_train(settings: Settings, *, use_checkpoint_store: bool) -> int:
         return 0 if result.ok else 1
 
     wall_t0 = time.perf_counter()
-    mp_result = train_multiprocess_from_settings(settings)
+    mp_result = train_multiprocess_from_settings(
+        settings,
+        checkpoint=use_checkpoint_store,
+    )
     wall_s = time.perf_counter() - wall_t0
     assert isinstance(mp_result, MultiProcessResult)
     print(
         f"train ok={mp_result.ok} workers={mp_result.world_size} "
         f"steps={mp_result.steps} final_loss={mp_result.final_loss:.6f}"
+        + (
+            f" last_ckpt={mp_result.last_checkpoint_step}"
+            if mp_result.last_checkpoint_step is not None
+            else ""
+        )
     )
     for w in mp_result.workers:
         err = f" error={w.error}" if w.error else ""
@@ -125,8 +133,12 @@ def _run_train(settings: Settings, *, use_checkpoint_store: bool) -> int:
         wall_seconds=max(wall_s, 1e-9),
         useful_seconds=max(wall_s, 1e-9),
         steps_completed=mp_result.steps,
+        ckpt_save_seconds=mp_result.ckpt_save_seconds,
         final_loss=mp_result.final_loss,
-        extra={"mode": "train_multiprocess"},
+        extra={
+            "mode": "train_multiprocess",
+            "last_checkpoint_step": mp_result.last_checkpoint_step,
+        },
     )
     _emit_and_announce(settings, report)
     _print_metrics(report)

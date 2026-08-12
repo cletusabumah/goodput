@@ -99,3 +99,43 @@ def test_cli_config_writes_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         assert key in data
     assert 0.0 <= data["goodput"] <= 1.0
     assert data["run_name"] == "cli-config-smoke"
+
+
+def test_cli_config_multiprocess_checkpoints(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Baseline-shaped YAML (N=2 + ckpt_interval) must checkpoint and time saves."""
+    from goodput.cli import main
+
+    ckpt_dir = tmp_path / "ckpts"
+    cfg = tmp_path / "mp.yaml"
+    cfg.write_text(
+        "\n".join(
+            [
+                "name: mp-ckpt-smoke",
+                "mode: train",
+                "num_workers: 2",
+                "steps: 4",
+                "ckpt_interval: 2",
+                f"ckpt_dir: {ckpt_dir}",
+                f"artifacts_dir: {tmp_path / 'artifacts'}",
+                "batch_size: 4",
+                "input_size: 8",
+                "hidden_size: 8",
+                "seed: 3",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    code = main(["--config", str(cfg)])
+    assert code == 0
+    assert (ckpt_dir / "step_000002.pt").is_file()
+    assert (ckpt_dir / "latest.pt").is_file()
+    report_path = tmp_path / "artifacts" / "reports" / "mp-ckpt-smoke" / "report.json"
+    data = json.loads(report_path.read_text(encoding="utf-8"))
+    assert data["ckpt_save_count"] >= 1
+    assert data["ckpt_save_s"] > 0
+    assert data["last_checkpoint_step"] == 4
