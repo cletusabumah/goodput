@@ -31,7 +31,7 @@ config → spawn N workers → train + periodic checkpoint
 ## What we intentionally skip (MVP)
 
 - **No database** — results land in `artifacts/` as JSON/CSV.
-- **No frontend / FastAPI serving** — CLI + report files; charts via scripts/notebooks.
+- **No frontend / FastAPI serving** — CLI + report files; plot with `goodput-run --plot`.
 - **No real datasets or PII** — synthetic toy tensors only.
 
 See [`docs/mvp-spec.md`](docs/mvp-spec.md) and [`docs/vision.md`](docs/vision.md).
@@ -61,6 +61,17 @@ exec zsh
 gdone who cletus
 gdone status
 ```
+
+## Plots
+
+Goodput vs injected failure rate, one line per checkpoint mode (ticket 2.3):
+
+```bash
+pip install -e ".[viz]"
+goodput-run --sweep experiments/sweep.yaml --plot
+```
+
+PNG lands at `artifacts/plots/goodput_vs_failure_rate.png` (gitignored). Full recipe: [`docs/testing.md`](docs/testing.md).
 
 ## Docs
 

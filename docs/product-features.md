@@ -10,7 +10,7 @@ This is an **infra simulator**, not a multi-sided product. Personas below keep s
 | Kill a worker mid-run | Must | Scripted SIGKILL |
 | JSON goodput report | Must | Machine-readable |
 | Compose multi-node demo | Must | Portfolio realism |
-| Plot recipes | Stretch | Matplotlib script |
+| Plot recipes | Must | `goodput-run --plot` (matplotlib extra) |
 | Colab GPU demo | Stretch | Optional |
 
 ## Persona B — Interviewer (consumer of evidence)
