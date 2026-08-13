@@ -1,0 +1,32 @@
+{
+  "week": 5,
+  "phase": "Phase 2 — Compose cluster + ckpt latency",
+  "goal": "Close Phase 2: Docker Compose multi-node simulation and checkpoint/restore latency vs worker count (tickets 2.4–2.5).",
+  "label": "Week 5",
+  "tasks": [
+    {
+      "id": "compose-nodes",
+      "title": "Docker Compose multi-node simulation, 2–4 services (ticket 2.4)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "latency-table",
+      "title": "Checkpoint/restore latency vs worker count table (ticket 2.5)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week5-learned",
+      "title": "Fill Week 5 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
