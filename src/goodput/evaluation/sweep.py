@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -168,6 +169,13 @@ def _train_prefix(settings: Settings, store: LocalFsCheckpointStore, steps: int)
     )
 
 
+def _reset_ckpt_dir(ckpt_dir: Path) -> None:
+    """Drop leftover checkpoints so a rerun is a fresh job, not a resume."""
+    if ckpt_dir.exists():
+        shutil.rmtree(ckpt_dir)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+
 def run_sweep_cell(
     settings: Settings,
     *,
@@ -185,6 +193,7 @@ def run_sweep_cell(
             "num_workers": 1,
         }
     )
+    _reset_ckpt_dir(Path(ckpt_dir))
     store = LocalFsCheckpointStore(ckpt_dir)
     kill_at = kill_at_for_rate(
         steps=cell_settings.steps,

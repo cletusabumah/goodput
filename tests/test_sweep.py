@@ -137,6 +137,44 @@ def test_sweep_cell_report_has_required_fields(tmp_path: Path) -> None:
     assert report["mode"] == "sweep_crash"
 
 
+def test_zero_failure_cell_does_not_resume_on_rerun(tmp_path: Path) -> None:
+    """A second sweep must not pick up leftover latest.pt as a resume."""
+    settings = Settings(
+        run_name="rerun",
+        steps=6,
+        ckpt_interval=2,
+        num_workers=1,
+        batch_size=4,
+        input_size=8,
+        hidden_size=8,
+        seed=4,
+        device="cpu",
+        ci_mode=True,
+    )
+    ckpt_dir = tmp_path / "ckpts"
+    first = run_sweep_cell(
+        settings,
+        ckpt_mode="naive",
+        failure_rate=0.0,
+        ckpt_dir=ckpt_dir,
+    )
+    assert first["mode"] == "sweep_train"
+    assert first["ckpt_restore_s"] == 0.0
+    assert first["steps_completed"] == 6
+    assert (ckpt_dir / "latest.pt").is_file()
+
+    second = run_sweep_cell(
+        settings,
+        ckpt_mode="naive",
+        failure_rate=0.0,
+        ckpt_dir=ckpt_dir,
+    )
+    assert second["mode"] == "sweep_train"
+    assert second["ckpt_restore_s"] == 0.0
+    assert second["steps_completed"] == 6
+    assert second.get("resumed_from_step") in {None, 0}
+
+
 def test_cli_sweep(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from goodput.cli import main
 
