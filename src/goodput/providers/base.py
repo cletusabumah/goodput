@@ -32,6 +32,10 @@ class CheckpointStore(ABC):
     def latest(self) -> Path | str | None:
         """Return locator of the newest checkpoint, or None."""
 
+    def load_at_step(self, step: int) -> CheckpointPayload:
+        """Load the checkpoint written for a specific global step (ticket 2.1)."""
+        raise NotImplementedError(f"{type(self).__name__} does not support load_at_step")
+
 
 class FaultInjector(ABC):
     name: str

@@ -1,0 +1,19 @@
+# Incremental / fast-ckpt A/B partner for baseline-naive (ticket 2.1).
+# Run: goodput-run --config experiments/baseline-incremental.yaml
+name: baseline-incremental
+mode: train
+seed: 42
+num_workers: 1
+steps: 20
+batch_size: 8
+input_size: 16
+hidden_size: 32
+learning_rate: 0.001
+ckpt_interval: 2
+ckpt_mode: incremental
+ckpt_full_every: 4
+ckpt_dir: artifacts/checkpoints/baseline-incremental
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file

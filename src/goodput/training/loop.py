@@ -12,7 +12,11 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from goodput.checkpointing import capture_training_state, restore_training_state
+from goodput.checkpointing import (
+    IncrementalCheckpointer,
+    capture_training_state,
+    restore_training_state,
+)
 from goodput.config import Settings
 from goodput.data import Batch, SyntheticDataLoader, load_batch_fixture
 from goodput.models import ToyMLP
@@ -70,6 +74,8 @@ def train_steps(
     start_step: int = 0,
     checkpoint_store: CheckpointStore | None = None,
     ckpt_interval: int = 0,
+    ckpt_mode: str = "naive",
+    ckpt_full_every: int = 4,
 ) -> TrainResult:
     """
     Run training from ``start_step`` for ``steps`` updates.
@@ -77,6 +83,9 @@ def train_steps(
     Global step index goes ``start_step .. start_step+steps-1``.
     When ``ckpt_interval > 0`` and a store is provided, saves after every
     N completed steps (and always after the final step).
+
+    ``ckpt_mode="incremental"`` uses lighter model-only saves between full
+    bases (ticket 2.1).
     """
     if steps < 1:
         raise ValueError("steps must be >= 1")
@@ -95,6 +104,10 @@ def train_steps(
     useful_seconds = 0.0
     end_step = start_step + steps
     wall_t0 = time.perf_counter()
+
+    checkpointer: IncrementalCheckpointer | None = None
+    if checkpoint_store is not None and ckpt_mode == "incremental":
+        checkpointer = IncrementalCheckpointer(full_every=ckpt_full_every)
 
     for step in range(start_step, end_step):
         step_t0 = time.perf_counter()
@@ -118,7 +131,10 @@ def train_steps(
         if should_ckpt:
             assert checkpoint_store is not None
             save_t0 = time.perf_counter()
-            payload = capture_training_state(model, optimizer, step=completed)
+            if checkpointer is not None:
+                payload = checkpointer.capture(model, optimizer, step=completed)
+            else:
+                payload = capture_training_state(model, optimizer, step=completed)
             checkpoint_store.save(payload)
             ckpt_save_seconds.append(time.perf_counter() - save_t0)
             last_ckpt = completed
@@ -160,7 +176,13 @@ def train_from_settings(
     if checkpoint_store is not None and checkpoint_store.latest() is not None:
         restore_t0 = time.perf_counter()
         payload = checkpoint_store.load()
-        start_step = restore_training_state(model, optimizer, payload, device=device)
+        start_step = restore_training_state(
+            model,
+            optimizer,
+            payload,
+            device=device,
+            store=checkpoint_store,
+        )
         restore_s = time.perf_counter() - restore_t0
 
     result = train_steps(
@@ -172,6 +194,8 @@ def train_from_settings(
         start_step=start_step,
         checkpoint_store=checkpoint_store,
         ckpt_interval=settings.ckpt_interval,
+        ckpt_mode=settings.ckpt_mode,
+        ckpt_full_every=settings.ckpt_full_every,
     )
     result.ckpt_restore_seconds = restore_s
     # Init / loader construction is warm-up: exclude from wall and useful
@@ -202,7 +226,13 @@ def resume_after_crash(
 
     restore_t0 = time.perf_counter()
     payload = checkpoint_store.load()
-    ckpt_step = restore_training_state(model, optimizer, payload, device=device)
+    ckpt_step = restore_training_state(
+        model,
+        optimizer,
+        payload,
+        device=device,
+        store=checkpoint_store,
+    )
     restore_s = time.perf_counter() - restore_t0
 
     # Keep the same cycling batch pool an uninterrupted run would have used,
@@ -223,6 +253,8 @@ def resume_after_crash(
         start_step=ckpt_step,
         checkpoint_store=checkpoint_store,
         ckpt_interval=settings.ckpt_interval,
+        ckpt_mode=settings.ckpt_mode,
+        ckpt_full_every=settings.ckpt_full_every,
     )
     result.ckpt_restore_seconds = restore_s
     # Same warm-up policy as train_from_settings: exclude device/model/loader

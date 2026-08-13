@@ -96,7 +96,7 @@ def _worker_entry(
     try:
         from itertools import cycle
 
-        from goodput.checkpointing import capture_training_state
+        from goodput.checkpointing import IncrementalCheckpointer, capture_training_state
         from goodput.providers import LocalFsCheckpointStore
 
         settings = Settings(**settings_dict)
@@ -108,8 +108,11 @@ def _worker_entry(
         criterion = nn.MSELoss()
 
         store = None
+        checkpointer = None
         if ckpt_dir and rank == 0 and ckpt_interval > 0:
             store = LocalFsCheckpointStore(Path(ckpt_dir))
+            if settings.ckpt_mode == "incremental":
+                checkpointer = IncrementalCheckpointer(full_every=settings.ckpt_full_every)
 
         # Shard data by rank so workers are not trivial clones of the same batch stream.
         loader = SyntheticDataLoader(
@@ -149,7 +152,11 @@ def _worker_entry(
                 completed % ckpt_interval == 0 or completed == steps
             ):
                 save_t0 = time.perf_counter()
-                store.save(capture_training_state(model, optimizer, step=completed))
+                if checkpointer is not None:
+                    payload = checkpointer.capture(model, optimizer, step=completed)
+                else:
+                    payload = capture_training_state(model, optimizer, step=completed)
+                store.save(payload)
                 ckpt_save_seconds.append(time.perf_counter() - save_t0)
                 last_ckpt = completed
 

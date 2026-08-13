@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     ckpt_interval: int = Field(default=10, ge=0)
     ckpt_mode: Literal["naive", "incremental"] = "naive"
+    # How often incremental mode writes a full model+optimizer base (ticket 2.1).
+    ckpt_full_every: int = Field(default=4, ge=1)
     ckpt_dir: Path = Path("artifacts/checkpoints")
 
     fault_mode: Literal["none", "kill", "hang", "bitflip"] = "none"

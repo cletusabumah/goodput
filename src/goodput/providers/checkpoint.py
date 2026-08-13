@@ -40,6 +40,16 @@ class MockCheckpointStore(CheckpointStore):
     def latest(self) -> Path | str | None:
         return self._locator if self._history else None
 
+    def load_at_step(self, step: int) -> CheckpointPayload:
+        for payload in reversed(self._history):
+            if payload.step == step:
+                return CheckpointPayload(
+                    step=payload.step,
+                    state=_clone_state(payload.state),
+                    meta=dict(payload.meta),
+                )
+        raise FileNotFoundError(f"No mock checkpoint at step {step}")
+
     @property
     def save_count(self) -> int:
         return len(self._history)
@@ -94,6 +104,12 @@ class LocalFsCheckpointStore(CheckpointStore):
             return None
         pointer = torch.load(self._latest_path, map_location="cpu", weights_only=False)
         return pointer.get("locator")
+
+    def load_at_step(self, step: int) -> CheckpointPayload:
+        path = self._step_path(step)
+        if not path.exists():
+            raise FileNotFoundError(f"Checkpoint not found for step {step}: {path}")
+        return self.load(path)
 
 
 def _clone_state(state: dict[str, Any]) -> dict[str, Any]:
