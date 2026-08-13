@@ -1,0 +1,40 @@
+{
+  "week": 4,
+  "phase": "Phase 2 — Fast checkpoint + goodput curve",
+  "goal": "Start Phase 2: incremental/fast checkpoint path, failure-rate × ckpt-mode sweep, and goodput-vs-failure-rate plot (tickets 2.1–2.3).",
+  "label": "Week 4",
+  "tasks": [
+    {
+      "id": "incremental-ckpt",
+      "title": "Incremental / async-friendly checkpoint path (ticket 2.1)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "sweep-runner",
+      "title": "Sweep runner: failure rate × ckpt mode → comparison JSON/CSV (ticket 2.2)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "goodput-plot",
+      "title": "Plot goodput vs failure rate with/without fast ckpt (ticket 2.3)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week4-learned",
+      "title": "Fill Week 4 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
