@@ -32,9 +32,9 @@
       "id": "week4-learned",
       "title": "Fill Week 4 section in docs/what_i_learned.md",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-13T18:21:40.733899+00:00",
+      "completed_by": "cletus"
     }
   ]
 }
