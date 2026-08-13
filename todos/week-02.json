@@ -1,7 +1,7 @@
 {
   "week": 2,
-  "phase": "Phase 1 -- Toy trainer + naive checkpoint",
-  "goal": "Ship providers, synthetic data, single-process train, multi-process launch, and naive checkpoint save/restore (tickets 1.1\u20131.5).",
+  "phase": "Phase 1 — Toy trainer + naive checkpoint",
+  "goal": "Ship providers, synthetic data, single-process train, multi-process launch, and naive checkpoint save/restore (tickets 1.1–1.5).",
   "label": "Week 2",
   "tasks": [
     {
