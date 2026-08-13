@@ -1,0 +1,27 @@
+# Phase 2 sweep — failure rate × ckpt mode (ticket 2.2).
+# Run: goodput-run --sweep experiments/sweep.yaml
+# Writes artifacts/sweeps/phase2-sweep/comparison.json and comparison.csv
+name: phase2-sweep
+mode: sweep
+ckpt_modes:
+  - naive
+  - incremental
+# Crashes per step (0 = no crash). Mean gap ≈ 1/rate, snapped to ckpt_interval.
+failure_rates:
+  - 0.0
+  - 0.25
+  - 0.5
+seed: 42
+num_workers: 1
+steps: 8
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+ckpt_interval: 2
+ckpt_full_every: 2
+ckpt_dir: artifacts/checkpoints/sweeps
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
