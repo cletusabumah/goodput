@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, checkpoints, YAML experiments, sweeps (1.3–1.8, 2.2)."""
+"""CLI entrypoint — train, checkpoints, YAML experiments, sweeps, plots (1.3–1.8, 2.2–2.3)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.evaluation.plot import (
+    default_plot_path,
+    load_comparison,
+    plot_goodput_vs_failure_rate,
+)
 from goodput.evaluation.sweep import load_sweep_yaml, run_sweep
 from goodput.experiments import load_experiment_yaml
 from goodput.metrics import build_run_report, emit_run_report
@@ -172,6 +177,24 @@ def _run_fault_kill(
     return 0 if result.ok else 1
 
 
+def _run_plot(source: Path, output: Path | None) -> int:
+    try:
+        rows = load_comparison(source)
+        out = output if output is not None else default_plot_path()
+        written = plot_goodput_vs_failure_rate(rows, out)
+    except FileNotFoundError as exc:
+        print(exc)
+        return 2
+    except ValueError as exc:
+        print(f"plot error: {exc}")
+        return 2
+    except ImportError as exc:
+        print(exc)
+        return 2
+    print(f"plot={written}")
+    return 0
+
+
 def _apply_cli_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
     updates: dict[str, Any] = {}
     if args.steps is not None:
@@ -198,6 +221,22 @@ def main(argv: list[str] | None = None) -> int:
         type=str,
         default=None,
         help="Sweep YAML: failure rate × ckpt mode → comparison JSON/CSV (ticket 2.2)",
+    )
+    parser.add_argument(
+        "--plot",
+        nargs="?",
+        const="auto",
+        default=None,
+        help=(
+            "Plot goodput vs failure rate from comparison JSON/CSV (ticket 2.3). "
+            "Pass a path, or use with --sweep to plot the sweep result."
+        ),
+    )
+    parser.add_argument(
+        "--plot-out",
+        type=Path,
+        default=None,
+        help="PNG output path (default: artifacts/plots/goodput_vs_failure_rate.png)",
     )
     parser.add_argument(
         "--steps",
@@ -275,7 +314,18 @@ def main(argv: list[str] | None = None) -> int:
                 f"  mode={row['ckpt_mode']} rate={row['failure_rate']} "
                 f"kill_at={row['kill_at']} goodput={row['goodput']:.4f}"
             )
+        if args.plot is not None:
+            source = result.json_path if args.plot == "auto" else Path(args.plot)
+            return _run_plot(source, args.plot_out)
         return 0
+
+    if args.plot is not None:
+        source = (
+            Path("artifacts/sweeps/phase2-sweep/comparison.json")
+            if args.plot == "auto"
+            else Path(args.plot)
+        )
+        return _run_plot(source, args.plot_out)
 
     if args.config:
         try:
@@ -323,7 +373,10 @@ def main(argv: list[str] | None = None) -> int:
         use_store = args.ckpt_dir is not None
         return _run_train(settings, use_checkpoint_store=use_store)
 
-    print("Pass --train, --fault-kill, --config, or --sweep; see docs/phase-1-tickets.md.")
+    print(
+        "Pass --train, --fault-kill, --config, --sweep, or --plot; "
+        "see docs/phase-1-tickets.md."
+    )
     return 0
 
 

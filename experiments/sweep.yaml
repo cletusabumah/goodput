@@ -1,6 +1,7 @@
-# Phase 2 sweep — failure rate × ckpt mode (ticket 2.2).
-# Run: goodput-run --sweep experiments/sweep.yaml
-# Writes artifacts/sweeps/phase2-sweep/comparison.json and comparison.csv
+# Phase 2 sweep — failure rate × ckpt mode (tickets 2.2–2.3).
+# Run:  goodput-run --sweep experiments/sweep.yaml --plot
+# Table: artifacts/sweeps/phase2-sweep/comparison.json
+# Plot:  artifacts/plots/goodput_vs_failure_rate.png  (needs: pip install -e ".[viz]")
 name: phase2-sweep
 mode: sweep
 ckpt_modes:

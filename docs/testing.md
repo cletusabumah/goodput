@@ -35,7 +35,16 @@ ruff check src tests
 ## Manual / weekly
 
 - Docker Compose kill script
-- Plot regeneration from committed experiment configs
+- Plot regeneration from committed experiment configs (ticket 2.3):
+
+```bash
+pip install -e ".[viz]"
+goodput-run --sweep experiments/sweep.yaml --plot
+# PNG: artifacts/plots/goodput_vs_failure_rate.png  (gitignored)
+# Re-plot an existing table:
+goodput-run --plot artifacts/sweeps/phase2-sweep/comparison.json
+```
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns
