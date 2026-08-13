@@ -4,7 +4,7 @@ Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 3)
+## Cumulative takeaways (through Week 4)
 
 Worth saying in an interview, not just a changelog:
 
@@ -19,6 +19,10 @@ Worth saying in an interview, not just a changelog:
 9. **Define the metric clocks.** Goodput is only as honest as **wall vs useful**. Warm-up (device/model/loader rebuild) should be excluded from both (ml-strategy); restore/save overhead is wall but not useful. Inconsistent timers between `train_from_settings` and `resume_after_crash` silently understate goodput on the kill path.
 10. **Path filters are part of the test plan.** A dedicated ML smoke job that asserts `report.json` must trigger on every package it depends on (`providers/`, `checkpointing/`), not only `training/` — otherwise sink/ckpt regressions skip the job that was meant to catch them.
 11. **CLI wiring is product surface.** `use_checkpoint_store` that only applies when `num_workers <= 1` means a committed 2-worker baseline never checkpoints and `ckpt_save_s` stays zero. Feature flags must reach every code path the docs claim to exercise.
+12. **Incremental checkpointing is an optimizer-state bet.** The fast path skips Adam (or any heavy optimizer) between full bases; a tiny SGD toy can make naive look as cheap, and goodput need not be higher. Pick the fixture that matches the claim.
+13. **Resume is contamination until you isolate the cell.** A sweep that shares `ckpt_dir` will load leftover `latest.pt` and turn `failure_rate=0` into a resume of the previous job. Wipe per cell.
+14. **Optional extras keep default CI honest.** Matplotlib lives in `[viz]`; plot tests `importorskip`. Default pytest stays green without chart deps — same idea as mock providers.
+15. **Assert the mechanism, not noisy wall-clock.** End-to-end `torch.save` means on GitHub runners inverted a 2.1 “incremental is faster” check (~13× the wrong way). Interleaved in-memory capture medians test clone/serialize; disk I/O is not a Done-when clock.
 
 ---
 
@@ -149,27 +153,46 @@ Worth saying in an interview, not just a changelog:
 
 ---
 
-## Week 4
+## Week 4 — Phase 2 start (fast ckpt + goodput curve)
 
 **Shipped:**
 
-- 
+- **2.1 Incremental ckpt** — Full model+optimizer base every `ckpt_full_every`; model-only deltas in between (`incremental_v1` / `incremental_full_v1`). Restore loads the base via `store.load_at_step` and reattaches optimizer state. Default capture path stays naive.
+- **2.2 Sweep runner** — `goodput-run --sweep experiments/sweep.yaml`: matrix of `ckpt_mode` × `failure_rate` → `artifacts/sweeps/<name>/comparison.json` + `.csv`. `failure_rate=0` is uninterrupted; `>0` is one **soft crash** at `kill_at ≈ 1/rate` snapped to `ckpt_interval` (1.5 resume path — no SIGKILL in the matrix).
+- **2.3 Goodput plot** — `goodput-run --plot` (or `--sweep … --plot`) writes `artifacts/plots/goodput_vs_failure_rate.png` (gitignored). Recipe in `docs/testing.md`. Matplotlib is `pip install -e ".[viz]"`.
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **What “faster ckpt” actually is:** Deltas omit optimizer clone/serialize. That is a real win on **Adam**; the committed sweep uses the default **SGD** trainer, so incremental is not guaranteed to beat naive on goodput. Don’t sell the Phase 2 chart as “fast ckpt always wins” on a toy that barely has optimizer state.
+2. **Sweep cell isolation:** Rerunning a cell reused `latest.pt` from the previous job → `failure_rate=0` silently resumed. Fix: `_reset_ckpt_dir` (wipe) before every cell + a regression test.
+3. **Failure rate is a schedule, not a Poisson process:** One crash per cell, snapped to a durable step with resume room. Honest for a tiny `steps=8` matrix; not a cluster MTBF simulator. Document the mapping (`kill_at_for_rate`) so the x-axis of the plot is interpretable.
+4. **CI timing flake vs 2.3:** After `gdone goodput-plot`, lint-and-test failed on the **2.1** disk-save mean check (incremental ~13× *slower*). Unrelated todo JSON; naive-only warmup + mean-of-all-saves (including full dumps) + GHA disk noise. Fix: interleaved in-memory `capture()` medians of **deltas vs naive**, not `torch.save` wall time.
+5. **`gdone` re-escaped Unicode:** Default `json.dumps` wrote `\u2014` / `\u00d7` back into `week-04.json`. `save_todos(..., ensure_ascii=False)` + a test so the next mark-done doesn’t undo week-file hygiene.
 
 **Metrics / evidence:**
 
-- 
+- Incremental **delta capture median** &lt; naive full-dump median on the Adam fixture (`hidden=256`)
+- `experiments/sweep.yaml`: naive + incremental × rates `{0, 0.25, 0.5}` → comparison table with `goodput`, `ckpt_save_s`, `kill_at`, `wasted_gpu_hours`
+- `goodput-run --sweep experiments/sweep.yaml --plot` → PNG under `artifacts/plots/`
+- Plot tests skip without matplotlib (`ss` on default CI); series grouping always runs
+
+**Other lessons:**
+
+- Soft-crash in the sweep is the right CI trade-off; real SIGKILL stays on the 1.6 / Compose path (2.4)
+- A green plot PR can still go red on a later `gdone` push if an unrelated timing test is flaky — read the failing node, not the commit title
+- `gdone` is part of the docs pipeline: it rewrites the whole week JSON, not just `done: true`
 
 **Blockers:**
 
-- 
+- Transient `Could not resolve host: github.com` on push (retry; HTTPS remote)
+- False-alarm CI on the 2.1 timing test after the plot+gdone push — not a 2.3 regression
+- None that blocked Phase 2 tickets **2.1–2.3**
 
 **Next week focus:**
 
-- 
+- **2.4** Docker Compose multi-node (2–4 services) + documented kill script
+- **2.5** Checkpoint/restore latency vs worker count table
+- Phase 2 exit: keep the goodput-vs-rate chart regenerable from committed YAML
 
 ---
 
