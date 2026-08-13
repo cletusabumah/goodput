@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, checkpoints, SIGKILL recovery, YAML experiments (1.3–1.8)."""
+"""CLI entrypoint — train, checkpoints, YAML experiments, sweeps (1.3–1.8, 2.2)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.evaluation.sweep import load_sweep_yaml, run_sweep
 from goodput.experiments import load_experiment_yaml
 from goodput.metrics import build_run_report, emit_run_report
 from goodput.providers import LocalFsCheckpointStore, build_providers
@@ -193,6 +194,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--config", type=str, default=None, help="Experiment YAML (ticket 1.8)")
     parser.add_argument(
+        "--sweep",
+        type=str,
+        default=None,
+        help="Sweep YAML: failure rate × ckpt mode → comparison JSON/CSV (ticket 2.2)",
+    )
+    parser.add_argument(
         "--steps",
         type=int,
         default=None,
@@ -250,6 +257,26 @@ def main(argv: list[str] | None = None) -> int:
         print(__version__)
         return 0
 
+    if args.sweep:
+        try:
+            spec = load_sweep_yaml(args.sweep)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"sweep config error: {exc}")
+            return 2
+        print(
+            f"goodput {__version__} | sweep={spec.name} "
+            f"modes={list(spec.ckpt_modes)} rates={list(spec.failure_rates)}"
+        )
+        print(f"config={spec.path}")
+        result = run_sweep(spec)
+        print(f"sweep cells={len(result.rows)} json={result.json_path} csv={result.csv_path}")
+        for row in result.rows:
+            print(
+                f"  mode={row['ckpt_mode']} rate={row['failure_rate']} "
+                f"kill_at={row['kill_at']} goodput={row['goodput']:.4f}"
+            )
+        return 0
+
     if args.config:
         try:
             spec = load_experiment_yaml(args.config)
@@ -296,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
         use_store = args.ckpt_dir is not None
         return _run_train(settings, use_checkpoint_store=use_store)
 
-    print("Pass --train, --fault-kill, or --config, or see docs/phase-1-tickets.md.")
+    print("Pass --train, --fault-kill, --config, or --sweep; see docs/phase-1-tickets.md.")
     return 0
 
 
