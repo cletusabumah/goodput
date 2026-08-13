@@ -32,17 +32,17 @@
       "id": "ml-ci-smoke",
       "title": "CI training smoke \u226410 steps; fail on NaN (ticket 1.9)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-13T00:43:20.558383+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "week3-learned",
       "title": "Fill Week 3 section in docs/what_i_learned.md",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-13T00:43:20.582726+00:00",
+      "completed_by": "cletus"
     }
   ]
 }

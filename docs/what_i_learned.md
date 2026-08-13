@@ -4,7 +4,7 @@ Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 2)
+## Cumulative takeaways (through Week 3)
 
 Worth saying in an interview, not just a changelog:
 
@@ -13,9 +13,12 @@ Worth saying in an interview, not just a changelog:
 3. **Honesty about fidelity.** We use a **toy barrier + shared-tensor all-reduce**, not full PyTorch DDP yet. Saying that out loud is better than pretending `torchrun` when CI runs on CPU spawn.
 4. **Provider interfaces are a CI strategy.** Mocks for checkpoint/fault/metrics mean PRs never need GPUs, SIGKILL, or multi-GB downloads — same pattern as swappable OCR providers in a product repo, adapted for ML.
 5. **Scope discipline.** No DB, no frontend, no FastAPI for MVP. Artifacts are JSON/`.pt` files. That kept Phase 0–1 about the metric, not a SaaS shell.
-6. **Resume correctness ≠ weight restore.** Restoring model + optimizer + step is necessary but not sufficient; the **data iterator position** must match an uninterrupted run or you silently train on the wrong batches.
+6. **Resume correctness ≠ weight restore.** Restoring model + optimizer + step is necessary but not sufficient; the **data iterator position** must match an uninterrupted run or you silently train on the wrong batches. Same class of bug: resume **loader pool size** must match uninterrupted `min(steps, 16)`, not grow with `ckpt + remaining`.
 7. **Process hygiene is part of the portfolio.** Numbered tickets, Done-when criteria, protected `main`, CI on every PR, weekly learned log — the story is “I can run an infra project,” not only “I wrote training code.”
-8. **Automation helps and conflicts.** Bugbot caught a real medium bug (batch stream on resume) and also raced a local fix (divergent commits / rejected push). Learn to verify remote, then rebase/reset — don’t force-push blindly.
+8. **Automation helps and conflicts.** Bugbot caught real bugs and also raced local fixes (divergent commits / rejected push). Default recovery: `fetch` + `reset --hard origin/<branch>`, then re-apply only what remote missed (e.g. a regression test) — don’t force-push blindly.
+9. **Define the metric clocks.** Goodput is only as honest as **wall vs useful**. Warm-up (device/model/loader rebuild) should be excluded from both (ml-strategy); restore/save overhead is wall but not useful. Inconsistent timers between `train_from_settings` and `resume_after_crash` silently understate goodput on the kill path.
+10. **Path filters are part of the test plan.** A dedicated ML smoke job that asserts `report.json` must trigger on every package it depends on (`providers/`, `checkpointing/`), not only `training/` — otherwise sink/ckpt regressions skip the job that was meant to catch them.
+11. **CLI wiring is product surface.** `use_checkpoint_store` that only applies when `num_workers <= 1` means a committed 2-worker baseline never checkpoints and `ckpt_save_s` stays zero. Feature flags must reach every code path the docs claim to exercise.
 
 ---
 
@@ -106,23 +109,43 @@ Worth saying in an interview, not just a changelog:
 
 **Shipped:**
 
-- 
+- **1.6 SIGKILL** — Multiprocess train → wait for durable `step_{k}.pt` → pin `latest.pt` → real `ProcessFaultInjector(dry_run=False)` on one rank → reap barrier-stuck peers → `resume_after_crash`; CLI `--fault-kill`
+- **1.7 Metrics report** — Time useful/wall + ckpt save/restore; `build_run_report` / `emit_run_report` with required MVP fields; emit via `MetricsSink` from `--train` / `--fault-kill`
+- **1.8 Experiment YAML** — `load_experiment_yaml` → `Settings` + `mode`; `goodput-run --config experiments/baseline.yaml` produces `artifacts/reports/<name>/report.json`; CLI flags override YAML
+- **1.9 ML CI smoke** — `experiments/ci-smoke.yaml` (≤10 steps), pytest NaN guard + report checks, real `ml-ci.yml` job (not a placeholder import)
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **Kill-at-checkpoint races:** Rank 0 can keep training and advance `latest.pt` past the intended kill step. Fix: wait for the *specific* `step_{kill_at}.pt`, then pin `latest` before SIGKILL. Peers hanging on the next barrier are expected — parent must `_reap_all` (try/finally) or the job leaks.
+2. **Resume pool-size regression:** `resume_after_crash` briefly sized the batch pool with `max(steps, ckpt+remaining)`, changing cycle length vs uninterrupted `min(steps, 16)` → wrong batches again (same family as Week 2 skip bug). Fix + regression test. Bugbot/local races → prefer reset-to-remote, re-apply only the unique test.
+3. **Metric clock consistency:** `train_from_settings` excluded warm-up from wall; `resume_after_crash` counted model/loader rebuild → kill-path reports looked worse than equivalent resume-via-train. Align both to restore + train loop only.
+4. **Multiprocess ignored checkpoint flag:** YAML baseline uses `num_workers: 2`, but `use_checkpoint_store` only wired the single-process branch → no `.pt` files, `ckpt_save_s=0`. Fix: pass `ckpt_dir` through `launch_workers` and return rank-0 save timings.
+5. **CI path-filter gap:** ML smoke asserts report/ckpt health but initially omitted `providers/**` and `checkpointing/**` from `paths:` — sink/ckpt-only PRs would skip the job. Filters must match the dependency graph of the smoke.
 
 **Metrics / evidence:**
 
-- 
+- `goodput-run --fault-kill --workers 2 …` recovers with `resumed_from=<kill_at>`
+- `goodput-run --config experiments/baseline.yaml` → report with `goodput`, `ckpt_save_s`, `ckpt_restore_s`, `wasted_gpu_hours` (after MP ckpt fix, save latency &gt; 0)
+- `goodput-run --config experiments/ci-smoke.yaml` → `steps_completed=8`, finite `final_loss`, `goodput ∈ [0,1]`
+- Phase 1 exit story closed: kill → restore → **number** in JSON, plus one-command YAML + CI smoke
+
+**Other lessons:**
+
+- Required report fields are a contract: tests that only check “file exists” are weaker than asserting keys + ranges
+- Warm-up exclusion is a product decision — document it (ml-strategy) and enforce it in every entrypoint that builds a report
+- `gdone` todo marks can lag merges if they never land on `main`; treat todo updates as part of the ticket PR when possible
+- Small follow-up commits (wall policy, MP ckpt, path filters) after Bugbot/review are normal; keep them focused
 
 **Blockers:**
 
-- 
+- Repeated push rejects from Bugbot autofix vs local commits on 1.6 (resolved with reset-to-remote pattern)
+- None that blocked Phase 1 Done-when once the MP checkpoint + wall-clock fixes landed
 
 **Next week focus:**
 
-- 
+- Phase 2: fast/incremental checkpoint path vs naive  
+- Goodput vs injected failure-rate chart (with/without fast ckpt)  
+- Keep reports reproducible from committed `experiments/*.yaml`
 
 ---
 
