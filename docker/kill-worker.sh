@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# SIGKILL a Compose worker after a durable checkpoint exists (ticket 2.4).
+# SIGKILL a Compose worker after both ranks finish training (ticket 2.4).
+#
+# Workers train to completion, write reports, then sleep infinity. This script
+# waits for those reports — not the first step_*.pt — so a mid-run kill cannot
+# skip compose-worker-1's report.
 #
 # Usage (from repo root, after `docker compose -f docker/compose.yaml up --build`):
 #   ./docker/kill-worker.sh
@@ -9,21 +13,22 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE_FILE="$ROOT/docker/compose.yaml"
-CKPT_DIR="$ROOT/artifacts/checkpoints/compose"
+REPORT_0="$ROOT/artifacts/reports/compose-worker-0/report.json"
+REPORT_1="$ROOT/artifacts/reports/compose-worker-1/report.json"
 
 DRY_RUN=0
 SERVICE="worker-1"
-WAIT_CKPT=1
+WAIT_READY=1
 
 usage() {
   cat <<'EOF'
 Usage: docker/kill-worker.sh [--dry-run] [--no-wait] [SERVICE]
 
-SIGKILL a Compose worker (default: worker-1) after rank 0 has written
-artifacts/checkpoints/compose/step_*.pt on the shared volume.
+SIGKILL a Compose worker (default: worker-1) after both ranks have finished
+training and written artifacts/reports/compose-worker-*/report.json.
 
   --dry-run   Print the docker compose kill command; do not wait or signal
-  --no-wait   Skip waiting for a checkpoint (still requires docker compose)
+  --no-wait   Skip waiting for reports (still requires a running service)
   SERVICE     Compose service name (default: worker-1)
 EOF
 }
@@ -39,7 +44,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --no-wait)
-      WAIT_CKPT=0
+      WAIT_READY=0
       shift
       ;;
     -*)
@@ -70,21 +75,24 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ "$WAIT_CKPT" -eq 1 ]]; then
-  echo "waiting for checkpoint under $CKPT_DIR ..."
+if [[ "$WAIT_READY" -eq 1 ]]; then
+  echo "waiting for post-train reports under artifacts/reports/compose-worker-*/ ..."
   found=0
-  for _ in $(seq 1 90); do
-    if compgen -G "$CKPT_DIR"/step_*.pt >/dev/null 2>&1; then
+  for _ in $(seq 1 120); do
+    if [[ -f "$REPORT_0" && -f "$REPORT_1" ]]; then
       found=1
       break
     fi
     sleep 1
   done
   if [[ "$found" -eq 0 ]]; then
-    echo "no step_*.pt after 90s; is compose up?  docker compose -f docker/compose.yaml up --build" >&2
+    echo "reports missing after 120s; is compose up and still training?" >&2
+    echo "  docker compose -f docker/compose.yaml up --build" >&2
+    echo "expected: $REPORT_0" >&2
+    echo "          $REPORT_1" >&2
     exit 1
   fi
-  echo "checkpoint present; sending SIGKILL to $SERVICE"
+  echo "both reports present; sending SIGKILL to $SERVICE"
 fi
 
 if ! "${COMPOSE[@]}" ps --status running --services 2>/dev/null | grep -qx "$SERVICE"; then

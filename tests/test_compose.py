@@ -56,6 +56,19 @@ def test_kill_worker_script_dry_run() -> None:
     assert "docker" in result.stdout
 
 
+def test_kill_worker_script_waits_for_reports_not_first_ckpt() -> None:
+    """Kill readiness is post-train reports, not the first step_*.pt mid-run."""
+    script = (ROOT / "docker" / "kill-worker.sh").read_text(encoding="utf-8")
+    assert "compose-worker-0/report.json" in script
+    assert "compose-worker-1/report.json" in script
+    assert 'compgen -G "$CKPT_DIR"/step_*.pt' not in script
+    assert "REPORT_0" in script and "REPORT_1" in script
+    compose = yaml.safe_load((ROOT / "docker" / "compose.yaml").read_text(encoding="utf-8"))
+    cmd = " ".join(compose["services"]["worker-0"]["command"])
+    assert "sleep infinity" in cmd
+    assert "rm -rf artifacts/reports/compose-worker-" in cmd
+
+
 def test_rank_nonzero_skips_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     ckpt = tmp_path / "ckpts"

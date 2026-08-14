@@ -15,12 +15,14 @@ x-worker: &worker
     dockerfile: Dockerfile
   volumes:
     - ../artifacts:/app/artifacts
-  # Rank 0 wipes leftover latest.pt so a rerun is not an accidental resume.
-  # Then train once and sleep so the kill script has a live container.
+  # Wipe this rank's leftover report (and rank-0 ckpts) so a rerun is clean.
+  # Train to completion, write the report, then sleep so kill-worker.sh can
+  # SIGKILL a finished node (it waits for both reports — not the first ckpt).
   command:
     - sh
     - -c
     - >-
+      rm -rf artifacts/reports/compose-worker-$$GOODPUT_RANK;
       if [ "$$GOODPUT_RANK" = 0 ]; then
       rm -f artifacts/checkpoints/compose/*.pt;
       fi;
