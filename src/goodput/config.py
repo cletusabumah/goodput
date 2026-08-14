@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     device: Literal["cpu", "cuda", "mps"] = "cpu"
     num_workers: int = Field(default=2, ge=1)
+    # Compose node id (ticket 2.4). Only rank 0 writes checkpoints so workers
+    # sharing a volume do not clobber latest.pt. Local multi-process ignores this.
+    rank: int = Field(default=0, ge=0)
     seed: int = 42
 
     steps: int = Field(default=100, ge=1)

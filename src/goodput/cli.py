@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, checkpoints, YAML experiments, sweeps, plots (1.3–1.8, 2.2–2.3)."""
+"""CLI entrypoint — train, YAML experiments, sweeps, plots, Compose (2.4)."""
 
 from __future__ import annotations
 
@@ -89,8 +89,10 @@ def _report_from_fault(settings: Settings, result: FaultRecoveryResult) -> dict[
 
 
 def _run_train(settings: Settings, *, use_checkpoint_store: bool) -> int:
+    # Compose nodes share a volume; only rank 0 persists so latest.pt is not a race.
+    use_store = use_checkpoint_store and (settings.num_workers > 1 or settings.rank == 0)
     if settings.num_workers <= 1:
-        store = LocalFsCheckpointStore(settings.ckpt_dir) if use_checkpoint_store else None
+        store = LocalFsCheckpointStore(settings.ckpt_dir) if use_store else None
         result = train_from_settings(settings, checkpoint_store=store)
         ckpt_msg = (
             f" last_ckpt={result.last_checkpoint_step}"
@@ -103,7 +105,7 @@ def _run_train(settings: Settings, *, use_checkpoint_store: bool) -> int:
             else ""
         )
         print(
-            f"train ok={result.ok} steps={result.steps_completed} "
+            f"train ok={result.ok} rank={settings.rank} steps={result.steps_completed} "
             f"final_loss={result.final_loss:.6f} device={result.device}"
             f"{ckpt_msg}{resume_msg}"
         )

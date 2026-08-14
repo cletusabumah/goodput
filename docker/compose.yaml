@@ -1,0 +1,68 @@
+# Compose “cluster” — 2 worker containers by default (ticket 2.4).
+# Each service is one single-process rank sharing ./artifacts.
+# Lockstep all-reduce stays in-process (tickets 1.4 / 1.6); containers do not
+# share a barrier. Kill worker-1 to demo SIGKILL of a node.
+#
+#   docker compose -f docker/compose.yaml up --build
+#   ./docker/kill-worker.sh
+#
+# Four nodes: docker compose -f docker/compose.yaml --profile four up --build
+name: goodput
+
+x-worker: &worker
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  volumes:
+    - ../artifacts:/app/artifacts
+  # Rank 0 wipes leftover latest.pt so a rerun is not an accidental resume.
+  # Then train once and sleep so the kill script has a live container.
+  command:
+    - sh
+    - -c
+    - >-
+      if [ "$$GOODPUT_RANK" = 0 ]; then
+      rm -f artifacts/checkpoints/compose/*.pt;
+      fi;
+      goodput-run --config experiments/compose.yaml
+      --run-name compose-worker-$$GOODPUT_RANK;
+      exec sleep infinity
+
+services:
+  worker-0:
+    <<: *worker
+    environment:
+      GOODPUT_RANK: "0"
+      GOODPUT_NUM_WORKERS: "1"
+      GOODPUT_RUN_NAME: compose-worker-0
+      GOODPUT_CI_MODE: "0"
+      GOODPUT_DEVICE: cpu
+
+  worker-1:
+    <<: *worker
+    environment:
+      GOODPUT_RANK: "1"
+      GOODPUT_NUM_WORKERS: "1"
+      GOODPUT_RUN_NAME: compose-worker-1
+      GOODPUT_CI_MODE: "0"
+      GOODPUT_DEVICE: cpu
+
+  worker-2:
+    <<: *worker
+    profiles: ["four"]
+    environment:
+      GOODPUT_RANK: "2"
+      GOODPUT_NUM_WORKERS: "1"
+      GOODPUT_RUN_NAME: compose-worker-2
+      GOODPUT_CI_MODE: "0"
+      GOODPUT_DEVICE: cpu
+
+  worker-3:
+    <<: *worker
+    profiles: ["four"]
+    environment:
+      GOODPUT_RANK: "3"
+      GOODPUT_NUM_WORKERS: "1"
+      GOODPUT_RUN_NAME: compose-worker-3
+      GOODPUT_CI_MODE: "0"
+      GOODPUT_DEVICE: cpu
