@@ -73,6 +73,16 @@ goodput-run --sweep experiments/sweep.yaml --plot
 
 PNG lands at `artifacts/plots/goodput_vs_failure_rate.png` (gitignored). Full recipe: [`docs/testing.md`](docs/testing.md).
 
+## Latency table
+
+Checkpoint save/restore time vs worker count (ticket 2.5):
+
+```bash
+goodput-run --latency experiments/latency.yaml
+```
+
+JSON/CSV plus a markdown table land at `artifacts/sweeps/latency-table/` (gitignored). Default CI uses local multiprocess, not Compose.
+
 ## Compose cluster
 
 Two CPU worker containers + a host SIGKILL script (ticket 2.4). Recipe: [`docker/README.md`](docker/README.md).

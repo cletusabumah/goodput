@@ -56,6 +56,14 @@ goodput-run --sweep experiments/sweep.yaml --plot
 goodput-run --plot artifacts/sweeps/phase2-sweep/comparison.json
 ```
 
+- Checkpoint/restore latency vs worker count (ticket 2.5):
+
+```bash
+goodput-run --latency experiments/latency.yaml
+```
+
+Table: `artifacts/sweeps/latency-table/table.md` (also `latency.json` / `latency.csv`, gitignored). Default pytest does **not** spawn the N=4 recipe; tests use N=1–2.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns

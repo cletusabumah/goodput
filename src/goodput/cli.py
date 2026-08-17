@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, YAML experiments, sweeps, plots, Compose (2.4)."""
+"""CLI entrypoint — train, YAML experiments, sweeps, plots, latency, Compose."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.evaluation.latency import load_latency_yaml, run_latency
 from goodput.evaluation.plot import (
     default_plot_path,
     load_comparison,
@@ -225,6 +226,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Sweep YAML: failure rate × ckpt mode → comparison JSON/CSV (ticket 2.2)",
     )
     parser.add_argument(
+        "--latency",
+        type=str,
+        default=None,
+        help="Latency YAML: worker count → ckpt save/restore table (ticket 2.5)",
+    )
+    parser.add_argument(
         "--plot",
         nargs="?",
         const="auto",
@@ -321,6 +328,31 @@ def main(argv: list[str] | None = None) -> int:
             return _run_plot(source, args.plot_out)
         return 0
 
+    if args.latency:
+        try:
+            spec = load_latency_yaml(args.latency)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"latency config error: {exc}")
+            return 2
+        print(
+            f"goodput {__version__} | latency={spec.name} "
+            f"workers={list(spec.worker_counts)}"
+        )
+        print(f"config={spec.path}")
+        result = run_latency(spec)
+        print(
+            f"latency cells={len(result.rows)} json={result.json_path} "
+            f"csv={result.csv_path} table={result.table_path}"
+        )
+        for row in result.rows:
+            print(
+                f"  workers={row['num_workers']} "
+                f"ckpt_save_s={row['ckpt_save_s']:.6f} "
+                f"ckpt_restore_s={row['ckpt_restore_s']:.6f} "
+                f"wall_s={row['wall_seconds']:.6f}"
+            )
+        return 0
+
     if args.plot is not None:
         source = (
             Path("artifacts/sweeps/phase2-sweep/comparison.json")
@@ -376,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_train(settings, use_checkpoint_store=use_store)
 
     print(
-        "Pass --train, --fault-kill, --config, --sweep, or --plot; "
+        "Pass --train, --fault-kill, --config, --sweep, --latency, or --plot; "
         "see docs/phase-1-tickets.md."
     )
     return 0

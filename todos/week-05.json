@@ -16,9 +16,9 @@
       "id": "latency-table",
       "title": "Checkpoint/restore latency vs worker count table (ticket 2.5)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-17T21:35:28.676039+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "week5-learned",
