@@ -4,7 +4,7 @@ Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 4)
+## Cumulative takeaways (through Week 5)
 
 Worth saying in an interview, not just a changelog:
 
@@ -23,6 +23,10 @@ Worth saying in an interview, not just a changelog:
 13. **Resume is contamination until you isolate the cell.** A sweep that shares `ckpt_dir` will load leftover `latest.pt` and turn `failure_rate=0` into a resume of the previous job. Wipe per cell.
 14. **Optional extras keep default CI honest.** Matplotlib lives in `[viz]`; plot tests `importorskip`. Default pytest stays green without chart deps — same idea as mock providers.
 15. **Assert the mechanism, not noisy wall-clock.** End-to-end `torch.save` means on GitHub runners inverted a 2.1 “incremental is faster” check (~13× the wrong way). Interleaved in-memory capture medians test clone/serialize; disk I/O is not a Done-when clock.
+16. **Compose is demo topology, not DDP.** Two containers are two **single-process** ranks on a shared volume — not cross-container all-reduce. Portfolio realism is named nodes + shared ckpt + host SIGKILL, with the fidelity gap stated in docs.
+17. **Shared checkpoint volume needs one writer.** When ranks share `latest.pt`, only rank 0 persists (`GOODPUT_RANK` / `settings.rank`). Otherwise concurrent writers race and clobber the restore pointer — same lesson as multiprocess rank-0-only dumps.
+18. **Readiness signals must match the story.** Killing on the first `step_*.pt` landed at step 10 of 400 and skipped worker-1’s report mid-run. Waiting for **post-train reports** aligns the Compose kill demo with “training finished, then failure.”
+19. **Latency table ≠ SIGKILL path.** The 2.5 table times restore via the 1.5 soft-resume path per cell (no SIGKILL in the matrix). On a tiny naive dump, save/restore stay roughly flat; train **wall** grows with spawn + barriers as N increases — that’s the honest scale story for MVP.
 
 ---
 
@@ -196,27 +200,47 @@ Worth saying in an interview, not just a changelog:
 
 ---
 
-## Week 5
+## Week 5 — Phase 2 close (Compose + ckpt latency table)
 
 **Shipped:**
 
-- 
+- **2.4 Compose cluster** — `Dockerfile` (CPU torch index), `docker/compose.yaml` (`worker-0` / `worker-1` default; `--profile four` for 2–3), `docker/kill-worker.sh` (`--dry-run`, waits for reports), `experiments/compose.yaml`. Containers share `./artifacts`; each node is **one single-process rank** (`num_workers: 1`), not cross-container DDP. Workers `sleep infinity` after train so the host can SIGKILL a live container.
+- **Rank-gated checkpointing** — `GOODPUT_RANK` / `settings.rank`: only rank 0 writes when nodes share a volume; rank ≥ 1 trains but `ckpt_save_s=0` in its report. CLI `_run_train` applies the store only when `num_workers > 1 or rank == 0`.
+- **Kill readiness fix** — First version waited on first `step_*.pt` (step 10 of 400) → worker-1 killed mid-run, no report. Fix: `kill-worker.sh` waits for **both** `artifacts/reports/compose-worker-{0,1}/report.json` before SIGKILL.
+- **2.5 Latency table** — `goodput-run --latency experiments/latency.yaml`: sweep `worker_counts` `{1, 2, 4}` → `artifacts/sweeps/latency-table/latency.json` + `.csv` + `table.md`. Each cell trains with periodic ckpt, then times restore via `resume_after_crash` (1.5 path — no SIGKILL in the matrix). Same per-cell `_reset_ckpt_dir` isolation as the 2.2 sweep.
+- **Docs / tests** — `docker/README.md`, recipes in `README.md` and `docs/testing.md`; `tests/test_compose.py` (YAML + kill script dry-run, no daemon); `tests/test_latency.py` (N=1–2 in CI, committed YAML includes N=4 for manual runs).
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **Compose fidelity vs narrative:** Two containers do not share the in-process barrier/all-reduce from 1.4/1.6 — they are parallel single-process trainers on a shared volume. The portfolio story is “named nodes + shared ckpt + documented kill,” not “I replicated DDP in Docker.” Say that explicitly.
+2. **Shared `latest.pt` races:** Without rank-gated writes, every container would overwrite the same path. Rank 0 alone persists; others must not clobber restore pointers.
+3. **Wrong readiness signal (real bug):** Checkpoint file appearance ≠ “job done.” At `ckpt_interval=10` and `steps=400`, the first `step_*.pt` fires at step 10 while worker-1 still has 390 steps left. Reports are the correct gate for the post-train kill demo.
+4. **What the latency table measures:** Restore is probed with one soft-resume step per cell, not the 1.6 SIGKILL path. On a tiny naive dump, **save/restore seconds stay roughly flat** across N; **train wall** grows with spawn + barriers — that is the expected MVP shape, not “ckpt I/O scales with worker count” for unsharded dumps.
+5. **Local Docker friction:** Mac needed an engine (Docker Desktop or Colima); first `up --build` is slow; recipe docs must wipe compose ckpt/report dirs; zsh `*` globs can fail with `no matches found` — use explicit paths in copy-paste recipes.
 
 **Metrics / evidence:**
 
-- 
+- `docker compose -f docker/compose.yaml up --build` → rank 0 writes `artifacts/checkpoints/compose/step_*.pt`; both ranks emit `artifacts/reports/compose-worker-*/report.json`
+- `./docker/kill-worker.sh --dry-run` → prints SIGKILL command without daemon; live run → worker-1 status **137** after both reports exist
+- `goodput-run --latency experiments/latency.yaml` → markdown table with `num_workers`, `ckpt_save_s`, `ckpt_restore_s`, `wall_seconds` for N ∈ {1, 2, 4}
+- Phase 2 exit (master-plan): goodput-vs-rate chart (2.3) **and** ckpt latency vs worker count table (2.5) both regenerable from committed YAML
+
+**Other lessons:**
+
+- Default pytest still does not start Compose — same CI boundary as real SIGKILL in 1.6
+- Latency runner mirrors sweep structure (`load_*_yaml`, per-cell ckpt wipe, comparison JSON/CSV) — third evaluation axis reuses the harness pattern
+- Phase 2 is closed on paper; Phase 3 adds failure modes (hang, bitflip) and the dollar narrative
 
 **Blockers:**
 
-- 
+- No Docker on PATH until Desktop/Colima installed locally (documented in `docker/README.md`; not a CI blocker)
+- None that blocked tickets **2.4–2.5** once kill readiness and rank-gated ckpt landed
 
 **Next week focus:**
 
-- 
+- Phase 3: **3.1** hang injector + health-check timeout
+- **3.2** bit-flip stub; **3.3** dollar-impact script from measured goodput deltas
+- Keep the three-story portfolio honest: goodput curve + latency table done; dollar model next
 
 ---
 
