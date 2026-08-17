@@ -1,0 +1,25 @@
+# Checkpoint/restore latency vs worker count (ticket 2.5).
+# Run:  goodput-run --latency experiments/latency.yaml
+# Table: artifacts/sweeps/latency-table/latency.json + latency.csv + table.md
+# N=8 is the ml-strategy stretch; omit it here so a laptop recipe stays short.
+name: latency-table
+mode: latency
+run_name: latency-table
+worker_counts:
+  - 1
+  - 2
+  - 4
+seed: 42
+steps: 6
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+ckpt_interval: 2
+ckpt_full_every: 2
+ckpt_mode: naive
+ckpt_dir: artifacts/checkpoints/latency
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
