@@ -34,7 +34,18 @@ ruff check src tests
 
 ## Manual / weekly
 
-- Docker Compose kill script
+- Docker Compose kill script (ticket 2.4) — see [`docker/README.md`](../docker/README.md):
+
+```bash
+rm -rf artifacts/checkpoints/compose artifacts/reports/compose-worker-0 artifacts/reports/compose-worker-1
+mkdir -p artifacts/checkpoints/compose
+docker compose -f docker/compose.yaml up --build
+# other terminal — after both reports exist (not on first step_*.pt):
+./docker/kill-worker.sh --dry-run
+./docker/kill-worker.sh
+```
+
+Default pytest does **not** start Compose.
 - Plot regeneration from committed experiment configs (ticket 2.3):
 
 ```bash

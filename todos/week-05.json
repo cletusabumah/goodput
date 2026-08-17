@@ -8,9 +8,9 @@
       "id": "compose-nodes",
       "title": "Docker Compose multi-node simulation, 2–4 services (ticket 2.4)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-16T02:58:31.462117+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "latency-table",

@@ -73,6 +73,15 @@ goodput-run --sweep experiments/sweep.yaml --plot
 
 PNG lands at `artifacts/plots/goodput_vs_failure_rate.png` (gitignored). Full recipe: [`docs/testing.md`](docs/testing.md).
 
+## Compose cluster
+
+Two CPU worker containers + a host SIGKILL script (ticket 2.4). Recipe: [`docker/README.md`](docker/README.md).
+
+```bash
+docker compose -f docker/compose.yaml up --build
+./docker/kill-worker.sh
+```
+
 ## Docs
 
 Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/master-plan.md).

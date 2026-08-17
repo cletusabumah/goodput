@@ -1,0 +1,19 @@
+# Compose-node train (ticket 2.4). Each container is one rank (GOODPUT_RANK).
+# Only rank 0 writes ckpt_dir so a shared volume is not a race on latest.pt.
+# Run via: docker compose -f docker/compose.yaml up --build
+name: compose-nodes
+mode: train
+seed: 42
+num_workers: 1
+steps: 400
+batch_size: 8
+input_size: 16
+hidden_size: 32
+learning_rate: 0.001
+ckpt_interval: 10
+ckpt_mode: naive
+ckpt_dir: artifacts/checkpoints/compose
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file

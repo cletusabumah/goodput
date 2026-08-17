@@ -1,0 +1,15 @@
+.venv/
+venv/
+.git/
+.github/
+artifacts/
+data/
+todos/
+docs/
+tests/
+**/__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.env
+.goodput-user
