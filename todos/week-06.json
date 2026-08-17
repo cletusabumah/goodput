@@ -1,0 +1,40 @@
+{
+  "week": 6,
+  "phase": "Phase 3 — Extra failure modes + dollar narrative",
+  "goal": "Start Phase 3: hang detection with health-check timeout, bit-flip gradient corruption stub, and dollar-impact estimate from measured goodput deltas (tickets 3.1–3.3).",
+  "label": "Week 6",
+  "tasks": [
+    {
+      "id": "hang-injector",
+      "title": "Hang injector + health-check timeout (ticket 3.1)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "bitflip-injector",
+      "title": "Bit-flip injector (gradient corruption) stub + optional detector (ticket 3.2)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "dollar-impact",
+      "title": "Dollar-impact script: public $/GPU-hr × goodput delta → Markdown/JSON (ticket 3.3)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week6-learned",
+      "title": "Fill Week 6 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
