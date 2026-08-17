@@ -80,6 +80,19 @@ def _param_count(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters())
 
 
+def _worker_should_hang(hang_rank: Any | None, rank: int) -> bool:
+    if hang_rank is None:
+        return False
+    with hang_rank.get_lock():
+        return hang_rank.value == rank
+
+
+def _worker_hang_if_requested(hang_rank: Any | None, rank: int) -> None:
+    if _worker_should_hang(hang_rank, rank):
+        while True:
+            time.sleep(0.5)
+
+
 def _worker_entry(
     rank: int,
     world_size: int,
@@ -91,6 +104,7 @@ def _worker_entry(
     progress: Any | None = None,
     ckpt_dir: str | None = None,
     ckpt_interval: int = 0,
+    hang_rank: Any | None = None,
 ) -> None:
     """Child process target — must be top-level for spawn pickling."""
     try:
@@ -129,6 +143,8 @@ def _worker_entry(
         last_ckpt: int | None = None
 
         for step in range(steps):
+            _worker_hang_if_requested(hang_rank, rank)
+
             batch = next(stream).to(device)
             optimizer.zero_grad(set_to_none=True)
             loss = criterion(model(batch.inputs), batch.targets)
@@ -139,8 +155,10 @@ def _worker_entry(
             # --- toy all-reduce: write local grads → barrier → average → barrier ---
             flat = _flatten_grads(model).detach().cpu()
             grad_bucket[rank].copy_(flat)
+            _worker_hang_if_requested(hang_rank, rank)
             barrier.wait()
             averaged = grad_bucket.mean(dim=0)
+            _worker_hang_if_requested(hang_rank, rank)
             barrier.wait()
             _unflatten_grads(model, averaged.to(device))
 

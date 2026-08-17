@@ -23,6 +23,7 @@ from goodput.providers.metrics import JsonFileMetricsSink
 from goodput.training import (
     MultiProcessResult,
     TrainResult,
+    run_hang_and_recover,
     run_sigkill_and_recover,
     train_from_settings,
     train_multiprocess_from_settings,
@@ -70,6 +71,21 @@ def _report_from_train(settings: Settings, result: TrainResult) -> dict[str, Any
 
 def _report_from_fault(settings: Settings, result: FaultRecoveryResult) -> dict[str, Any]:
     recovered = result.recovered
+    mode = f"fault_{result.fault_type}"
+    extra: dict[str, Any] = {
+        "mode": mode,
+        "fault_type": result.fault_type,
+        "kill_rank": result.kill_rank,
+        "kill_at_step": result.kill_at_step,
+        "checkpoint_step": result.checkpoint_step,
+        "failures_injected": len(result.injected),
+        "recoveries_succeeded": int(result.ok),
+    }
+    if result.fault_type == "hang":
+        extra["hang_rank"] = result.kill_rank
+        extra["hang_at_step"] = result.kill_at_step
+        extra["hang_detected"] = int(result.hang_detected)
+        extra["detection_latency_s"] = result.detection_latency_s
     return build_run_report(
         settings=settings,
         wall_seconds=result.wall_seconds,
@@ -78,14 +94,7 @@ def _report_from_fault(settings: Settings, result: FaultRecoveryResult) -> dict[
         ckpt_save_seconds=recovered.ckpt_save_seconds,
         ckpt_restore_seconds=recovered.ckpt_restore_seconds,
         final_loss=recovered.final_loss,
-        extra={
-            "mode": "fault_kill",
-            "kill_rank": result.kill_rank,
-            "kill_at_step": result.kill_at_step,
-            "checkpoint_step": result.checkpoint_step,
-            "failures_injected": len(result.injected),
-            "recoveries_succeeded": int(result.ok),
-        },
+        extra=extra,
     )
 
 
@@ -171,6 +180,34 @@ def _run_fault_kill(
     print(
         f"fault-kill ok={result.ok} kill_rank={result.kill_rank} "
         f"kill_at={result.kill_at_step} ckpt_step={result.checkpoint_step} "
+        f"recovered_steps={result.recovered.steps_completed} "
+        f"resumed_from={result.recovered.resumed_from_step}"
+    )
+    report = _report_from_fault(settings, result)
+    _emit_and_announce(settings, report)
+    _print_metrics(report)
+    return 0 if result.ok else 1
+
+
+def _run_fault_hang(
+    settings: Settings,
+    *,
+    hang_at_step: int,
+    hang_rank: int,
+) -> int:
+    if settings.num_workers < 2:
+        settings = settings.model_copy(update={"num_workers": 2})
+    result = run_hang_and_recover(
+        settings,
+        ckpt_dir=settings.ckpt_dir,
+        hang_at_step=hang_at_step,
+        hang_rank=hang_rank,
+        health_check_timeout_s=settings.health_check_timeout_s,
+    )
+    print(
+        f"fault-hang ok={result.ok} hang_rank={result.kill_rank} "
+        f"hang_at={result.kill_at_step} ckpt_step={result.checkpoint_step} "
+        f"detected={result.hang_detected} detection_s={result.detection_latency_s:.3f} "
         f"recovered_steps={result.recovered.steps_completed} "
         f"resumed_from={result.recovered.resumed_from_step}"
     )
@@ -283,6 +320,11 @@ def main(argv: list[str] | None = None) -> int:
         help="SIGKILL one worker mid-run then resume from checkpoint (ticket 1.6)",
     )
     parser.add_argument(
+        "--fault-hang",
+        action="store_true",
+        help="Hang one worker mid-run; detect via progress timeout; resume (ticket 3.1)",
+    )
+    parser.add_argument(
         "--fault-at",
         type=int,
         default=None,
@@ -380,6 +422,13 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             kill_rank = args.fault_rank if args.fault_rank is not None else spec.fault_rank
             return _run_fault_kill(settings, kill_at_step=kill_at, kill_rank=kill_rank)
+        if spec.mode == "fault_hang":
+            hang_at = args.fault_at if args.fault_at is not None else spec.fault_at
+            if hang_at is None:
+                print("fault_hang requires fault_at in YAML or --fault-at")
+                return 2
+            hang_rank = args.fault_rank if args.fault_rank is not None else spec.fault_rank
+            return _run_fault_hang(settings, hang_at_step=hang_at, hang_rank=hang_rank)
         # YAML train path always checkpoints when ckpt_interval > 0.
         return _run_train(settings, use_checkpoint_store=settings.ckpt_interval > 0)
 
@@ -403,12 +452,26 @@ def main(argv: list[str] | None = None) -> int:
             kill_rank=kill_rank,
         )
 
+    if args.fault_hang:
+        if args.ckpt_dir is None:
+            print("--fault-hang requires --ckpt-dir")
+            return 2
+        if args.fault_at is None:
+            print("--fault-hang requires --fault-at")
+            return 2
+        hang_rank = args.fault_rank if args.fault_rank is not None else 1
+        return _run_fault_hang(
+            settings,
+            hang_at_step=args.fault_at,
+            hang_rank=hang_rank,
+        )
+
     if args.train:
         use_store = args.ckpt_dir is not None
         return _run_train(settings, use_checkpoint_store=use_store)
 
     print(
-        "Pass --train, --fault-kill, --config, --sweep, --latency, or --plot; "
+        "Pass --train, --fault-kill, --fault-hang, --config, --sweep, --latency, or --plot; "
         "see docs/phase-1-tickets.md."
     )
     return 0

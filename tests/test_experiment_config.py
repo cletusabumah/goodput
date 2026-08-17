@@ -65,6 +65,15 @@ def test_load_fault_kill_yaml(tmp_path: Path) -> None:
     assert spec.settings.run_name == "kill-demo"
 
 
+def test_load_fault_hang_yaml(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    spec = load_experiment_yaml(root / "experiments" / "fault-hang.yaml")
+    assert spec.mode == "fault_hang"
+    assert spec.fault_at == 4
+    assert spec.settings.health_check_timeout_s == 1.0
+    assert spec.settings.fault_mode == "hang"
+
+
 def test_cli_config_writes_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from goodput.cli import main
 

@@ -13,7 +13,11 @@ from goodput.training.multiprocess import (
     launch_workers,
     train_multiprocess_from_settings,
 )
-from goodput.training.recovery import FaultRecoveryResult, run_sigkill_and_recover
+from goodput.training.recovery import (
+    FaultRecoveryResult,
+    run_hang_and_recover,
+    run_sigkill_and_recover,
+)
 
 __all__ = [
     "FaultRecoveryResult",
@@ -22,6 +26,7 @@ __all__ = [
     "WorkerResult",
     "launch_workers",
     "resume_after_crash",
+    "run_hang_and_recover",
     "run_sigkill_and_recover",
     "train_from_settings",
     "train_multiprocess_from_settings",

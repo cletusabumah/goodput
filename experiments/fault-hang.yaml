@@ -1,0 +1,20 @@
+# Hang injector demo — detect stall via progress timeout, then resume (ticket 3.1).
+# Run:  goodput-run --config experiments/fault-hang.yaml
+name: fault-hang-demo
+mode: fault_hang
+fault_at: 4
+fault_rank: 1
+fault_mode: hang
+num_workers: 2
+steps: 8
+ckpt_interval: 2
+health_check_timeout_s: 1.0
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+seed: 42
+ckpt_dir: artifacts/checkpoints/fault-hang
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
