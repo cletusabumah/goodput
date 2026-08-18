@@ -97,6 +97,26 @@ Uses `artifacts/sweeps/phase2-sweep/comparison.json` when present; otherwise run
 
 Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
 
+## Portfolio demo (interview walkthrough)
+
+Regenerate all three portfolio artifacts from committed YAML in one script (ticket 3.5):
+
+```bash
+source .venv/bin/activate
+./scripts/portfolio-demo.sh
+```
+
+Dry-run (print commands only): `./scripts/portfolio-demo.sh --dry-run`
+
+| Step | What it shows | Output |
+|------|----------------|--------|
+| Smoke train | Repro fields + finite loss | `artifacts/reports/ci-smoke/report.json` |
+| Sweep (+ plot) | Goodput vs failure rate, naive vs incremental | `artifacts/sweeps/phase2-sweep/`, optional PNG |
+| Latency | Ckpt save/restore vs worker count | `artifacts/sweeps/latency-table/table.md` |
+| Dollar | Labeled $ estimate from measured Δgoodput | `artifacts/sweeps/dollar-impact/table.md` |
+
+Talking points and honest caveats: [`docs/what_i_learned.md`](docs/what_i_learned.md) (§ Interview walkthrough). Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
+
 ## Compose cluster
 
 Two CPU worker containers + a host SIGKILL script (ticket 2.4). Recipe: [`docker/README.md`](docker/README.md).
@@ -112,7 +132,9 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 ## Status
 
-**Phase 0 — Foundation.** Docs + skeleton + smoke test + CI. Feature work begins after Phase 0 confirmation.
+**Phase 3 — portfolio-ready.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, dollar narrative, reproducibility pack, and `./scripts/portfolio-demo.sh` for a one-command interview walkthrough.
+
+Next (optional stretch): Phase 4 — goodput vs worker count, Colab GPU demo, experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
 
 ## License / visibility
 

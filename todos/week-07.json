@@ -16,9 +16,9 @@
       "id": "portfolio-polish",
       "title": "Portfolio polish: architecture diagram, README demo script, learned log (ticket 3.5)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-18T02:17:01.720901+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "week7-learned",

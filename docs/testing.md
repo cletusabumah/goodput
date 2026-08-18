@@ -74,6 +74,8 @@ Estimate: `artifacts/sweeps/dollar-impact/table.md` (also `dollar.json` / `dolla
 
 - Reproducibility pack (ticket 3.4): every `report.json` includes `git_sha`, `config_hash`, and `package_versions`. Two same-seed trains must match loss within tolerance (`tests/test_reproducibility.py`).
 
+- Portfolio demo (ticket 3.5): `./scripts/portfolio-demo.sh` regenerates smoke + sweep + latency + dollar; `./scripts/portfolio-demo.sh --dry-run` for CI.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns
