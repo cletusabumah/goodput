@@ -1,0 +1,32 @@
+{
+  "week": 7,
+  "phase": "Phase 3 — Reproducibility + portfolio polish",
+  "goal": "Close Phase 3: git SHA, package versions, and config hash in reports, plus architecture / README demo polish for a resume walkthrough (tickets 3.4–3.5).",
+  "label": "Week 7",
+  "tasks": [
+    {
+      "id": "reproducibility-pack",
+      "title": "Reproducibility pack: SHA, versions, config hash in reports (ticket 3.4)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "portfolio-polish",
+      "title": "Portfolio polish: architecture diagram, README demo script, learned log (ticket 3.5)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week7-learned",
+      "title": "Fill Week 7 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
