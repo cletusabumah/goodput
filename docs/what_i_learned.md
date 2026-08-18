@@ -34,6 +34,50 @@ Worth saying in an interview, not just a changelog:
 
 ---
 
+## Interview walkthrough (~5 minutes)
+
+Use this script live or send the repo link. Regenerate everything:
+
+```bash
+source .venv/bin/activate
+./scripts/portfolio-demo.sh
+```
+
+### 60-second pitch
+
+At cluster scale, GPUs fail often enough that **restart-from-scratch wastes most of the wall clock**. **Goodput** is the fraction of GPU-hours that actually advance training. This repo is a **scaled-down simulator**: toy multi-process training, periodic checkpoints, inject kill / hang / silent grad corruption, measure goodput and recovery — then scale a measured delta to a **labeled** dollar story. It is infra evidence, not a model zoo.
+
+### Three charts (Phase 3 exit criteria)
+
+| # | Say this | Command | Open this |
+|---|----------|---------|-----------|
+| 1 | “Incremental checkpointing vs naive under injected failure rate” | `goodput-run --sweep experiments/sweep.yaml --plot` | `artifacts/plots/goodput_vs_failure_rate.png` |
+| 2 | “Save/restore latency vs worker count on the soft-resume path” | `goodput-run --latency experiments/latency.yaml` | `artifacts/sweeps/latency-table/table.md` |
+| 3 | “Back-of-envelope $ if this Δgoodput happened on a Llama-scale cluster” | `goodput-run --dollar experiments/dollar.yaml` | `artifacts/sweeps/dollar-impact/table.md` |
+
+Every `report.json` also logs **`git_sha`**, **`config_hash`**, and **`package_versions`** so a number is traceable.
+
+### Failure modes (optional 2 minutes)
+
+| Mode | One line | Demo |
+|------|----------|------|
+| **Kill** | Process gone → restore from ckpt | `goodput-run --config experiments/fault-hang.yaml` is hang; kill via `--fault-kill` or Compose |
+| **Hang** | Process alive, progress stalled → timeout detect | `experiments/fault-hang.yaml` |
+| **Bit-flip** | Silent grad corruption, training continues | `experiments/fault-bitflip.yaml` |
+
+### Honest caveats (always say one)
+
+- Toy **barrier all-reduce**, not production DDP.
+- Compose is **two single-process nodes** on a shared volume, not cross-container sync.
+- Sweep matrix uses **soft crash + resume**, not SIGKILL in every cell.
+- Dollar table uses **public list $/GPU-hr** — not a quote; toy millisecond walls make the $ magnitude illustrative only.
+
+### Deeper narrative
+
+Weekly build log and cumulative takeaways **1–23** below — use 2–3 that match the interviewer’s question (sync training, provider mocks for CI, resume iterator bugs, inject races, sign-bit detection, etc.).
+
+---
+
 ## Week 1 — Phase 0 Foundation
 
 **Shipped:**
