@@ -1,4 +1,4 @@
-"""CLI entrypoint — train, YAML experiments, sweeps, plots, latency, Compose."""
+"""CLI entrypoint — train, YAML experiments, sweeps, plots, latency, dollar, Compose."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.evaluation.dollar import load_dollar_yaml, run_dollar
 from goodput.evaluation.latency import load_latency_yaml, run_latency
 from goodput.evaluation.plot import (
     default_plot_path,
@@ -321,6 +322,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Latency YAML: worker count → ckpt save/restore table (ticket 2.5)",
     )
     parser.add_argument(
+        "--dollar",
+        type=str,
+        default=None,
+        help="Dollar YAML: public $/GPU-hr × measured goodput delta (ticket 3.3)",
+    )
+    parser.add_argument(
         "--plot",
         nargs="?",
         const="auto",
@@ -452,6 +459,35 @@ def main(argv: list[str] | None = None) -> int:
             )
         return 0
 
+    if args.dollar:
+        try:
+            spec = load_dollar_yaml(args.dollar)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"dollar config error: {exc}")
+            return 2
+        print(
+            f"goodput {__version__} | dollar={spec.name} "
+            f"cluster={spec.cluster_size} gpu=${spec.usd_per_gpu_hour:.2f}/hr "
+            f"hours={spec.hours:g}"
+        )
+        print(f"config={spec.path}")
+        try:
+            result = run_dollar(spec)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"dollar error: {exc}")
+            return 2
+        print(
+            f"dollar rows={len(result.rows)} json={result.json_path} "
+            f"csv={result.csv_path} table={result.table_path}"
+        )
+        for row in result.rows:
+            print(
+                f"  rate={row['failure_rate']:g} "
+                f"delta={row['goodput_delta']:+.4f} "
+                f"${row['dollar_delta']:,.2f}"
+            )
+        return 0
+
     if args.plot is not None:
         source = (
             Path("artifacts/sweeps/phase2-sweep/comparison.json")
@@ -547,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "Pass --train, --fault-kill, --fault-hang, --fault-bitflip, --config, "
-        "--sweep, --latency, or --plot; see docs/phase-1-tickets.md."
+        "--sweep, --latency, --dollar, or --plot; see docs/phase-1-tickets.md."
     )
     return 0
 

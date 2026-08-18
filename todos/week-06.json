@@ -24,9 +24,9 @@
       "id": "dollar-impact",
       "title": "Dollar-impact script: public $/GPU-hr × goodput delta → Markdown/JSON (ticket 3.3)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-18T00:54:51.678723+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "week6-learned",

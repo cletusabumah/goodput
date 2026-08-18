@@ -83,6 +83,16 @@ goodput-run --latency experiments/latency.yaml
 
 JSON/CSV plus a markdown table land at `artifacts/sweeps/latency-table/` (gitignored). Default CI uses local multiprocess, not Compose.
 
+## Dollar impact
+
+Public list `$/GPU-hr` × simulated cluster × **measured** goodput delta (ticket 3.3):
+
+```bash
+goodput-run --dollar experiments/dollar.yaml
+```
+
+Uses `artifacts/sweeps/phase2-sweep/comparison.json` when present; otherwise runs `experiments/sweep.yaml` first. JSON/CSV/markdown land at `artifacts/sweeps/dollar-impact/` (gitignored). The markdown labels the Lambda Cloud H100 list price as back-of-envelope, not a quote.
+
 ## Compose cluster
 
 Two CPU worker containers + a host SIGKILL script (ticket 2.4). Recipe: [`docker/README.md`](docker/README.md).
