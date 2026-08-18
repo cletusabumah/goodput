@@ -8,9 +8,9 @@
       "id": "reproducibility-pack",
       "title": "Reproducibility pack: SHA, versions, config hash in reports (ticket 3.4)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-18T01:55:29.641058+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "portfolio-polish",

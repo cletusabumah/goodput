@@ -29,7 +29,7 @@ ruff check src tests
 ## Evaluation harness
 
 - Each run writes `artifacts/reports/<run>/report.json`
-- Required keys documented in `ml-strategy.md`
+- Required keys documented in `ml-strategy.md` (goodput fields **and** ticket 3.4: `git_sha`, `config_hash`, `package_versions`)
 - CI smoke asserts: report exists, goodput in `[0, 1]`, loss not NaN
 
 ## Manual / weekly
@@ -71,6 +71,8 @@ goodput-run --dollar experiments/dollar.yaml
 ```
 
 Estimate: `artifacts/sweeps/dollar-impact/table.md` (also `dollar.json` / `dollar.csv`, gitignored). Formula is `cluster_size × public $/GPU-hr × hours × Δgoodput`. Default pytest does **not** run the full sweep; tests feed a tiny comparison fixture. Missing comparison JSON triggers `experiments/sweep.yaml`.
+
+- Reproducibility pack (ticket 3.4): every `report.json` includes `git_sha`, `config_hash`, and `package_versions`. Two same-seed trains must match loss within tolerance (`tests/test_reproducibility.py`).
 
 - Fresh-clone test after setup-affecting PRs
 
