@@ -1,0 +1,24 @@
+# Dollar-impact estimate from measured goodput deltas (ticket 3.3).
+# Run:  goodput-run --dollar experiments/dollar.yaml
+# Uses artifacts/sweeps/phase2-sweep/comparison.json when present; otherwise
+# runs experiments/sweep.yaml first.
+# Out:  artifacts/sweeps/dollar-impact/dollar.json + dollar.csv + table.md
+#
+# Math (back-of-envelope, not a quote):
+#   dollar_delta = cluster_size × usd_per_gpu_hour × hours × (goodput_improved − goodput_baseline)
+name: dollar-impact
+mode: dollar
+comparison: artifacts/sweeps/phase2-sweep/comparison.json
+sweep: experiments/sweep.yaml
+gpu_sku: NVIDIA H100 SXM 80GB
+usd_per_gpu_hour: 3.99
+price_source: >-
+  Lambda Cloud 8x H100 SXM on-demand list, $3.99/GPU-hr
+  (public, Aug 2026; not a quote — prices change)
+price_url: https://lambda.ai/pricing
+# Simulated Llama-scale cluster × ~54-day job (vision.md), not this laptop run.
+cluster_size: 16384
+hours: 1296
+baseline_mode: naive
+improved_mode: incremental
+artifacts_dir: artifacts

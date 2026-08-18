@@ -64,6 +64,14 @@ goodput-run --latency experiments/latency.yaml
 
 Table: `artifacts/sweeps/latency-table/table.md` (also `latency.json` / `latency.csv`, gitignored). Default pytest does **not** spawn the N=4 recipe; tests use N=1–2.
 
+- Dollar impact from measured goodput deltas (ticket 3.3):
+
+```bash
+goodput-run --dollar experiments/dollar.yaml
+```
+
+Estimate: `artifacts/sweeps/dollar-impact/table.md` (also `dollar.json` / `dollar.csv`, gitignored). Formula is `cluster_size × public $/GPU-hr × hours × Δgoodput`. Default pytest does **not** run the full sweep; tests feed a tiny comparison fixture. Missing comparison JSON triggers `experiments/sweep.yaml`.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns
