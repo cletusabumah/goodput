@@ -10,9 +10,9 @@ At cluster scale, individually reliable GPUs become routinely unreliable. A sing
 
 | Persona | What they need |
 |---------|----------------|
-| **Cletus (builder / interviewee)** | A crisp before/after goodput chart, reproducible experiments, and a portfolio narrative that sounds like ML infra — not “I trained a toy model.” |
-| **ML infra interviewer** | Evidence you understand synchronized training failure modes, checkpoint trade-offs, and how to quantify dollar impact of a few goodput points. |
-| **Future self / collaborator** | A repo that clones in <30 minutes, has Done-when tickets, CI, and no tribal knowledge. |
+| **Operator** | Reproducible experiments, a goodput-vs-failure chart, and docs that read as ML infra — not “I trained a toy model.” |
+| **ML infra engineer** | A clear picture of synchronized training failure modes, checkpoint trade-offs, and how a few goodput points translate to a labeled dollar estimate. |
+| **Collaborator** | A repo that clones in <30 minutes, has Done-when tickets, CI, and no tribal knowledge. |
 
 ## What success looks like
 

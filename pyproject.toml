@@ -9,6 +9,7 @@ description = "Distributed training fault-injection and checkpoint goodput simul
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Cletus Abumah" }]
+license = { text = "MIT" }
 dependencies = [
   "pydantic-settings>=2.0",
   "pydantic>=2.0",

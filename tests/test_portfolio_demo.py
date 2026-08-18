@@ -48,14 +48,14 @@ def test_readme_documents_portfolio_demo() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "portfolio-demo.sh" in readme
     assert "Phase 3" in readme
-    assert "Interview walkthrough" in text or "Interview walkthrough" in (
+    assert "Demo walkthrough" in text or "Demo walkthrough" in (
         ROOT / "docs" / "what_i_learned.md"
     ).read_text(encoding="utf-8")
 
 
-def test_learned_log_has_interview_walkthrough_section() -> None:
+def test_learned_log_has_demo_walkthrough_section() -> None:
     text = (ROOT / "docs" / "what_i_learned.md").read_text(encoding="utf-8")
-    assert "## Interview walkthrough" in text
+    assert "## Demo walkthrough" in text
     assert "./scripts/portfolio-demo.sh" in text
     assert "Three charts" in text
     assert "Honest caveats" in text

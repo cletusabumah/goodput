@@ -12,7 +12,7 @@
 - Never commit `.env`, API tokens, cloud keys, or WandB/MLflow credentials.
 - CI uses defaults / mocks — no cloud credentials required for green builds.
 
-## Model safety / bias checklist (portfolio narrative)
+## Model safety / bias checklist
 
 This project does not ship a user-facing model. Still apply infra safety habits:
 

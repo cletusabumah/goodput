@@ -137,10 +137,10 @@ CI **must** default to mock/lightweight providers. Real process kills run in int
 |--------|------|
 | Local processes | Day-to-day dev + unit/integration |
 | Docker Compose | Demo “cluster” of N containers (single-process ranks, shared volume) |
-| Colab (optional) | GPU demo for portfolio |
+| Colab (optional) | GPU demo |
 | Cloud VMs (stretch) | Multi-node timing fidelity |
 
-## Fidelity notes (say these in an interview)
+## Fidelity notes
 
 - Toy **barrier + shared-tensor all-reduce**, not full PyTorch DDP.
 - Compose nodes are **parallel single-process trainers** on a shared checkpoint volume — not cross-container all-reduce.
@@ -149,4 +149,4 @@ CI **must** default to mock/lightweight providers. Real process kills run in int
 
 ## Why no database / frontend (MVP)
 
-Experiment cardinality is low (tens to hundreds of runs). JSON reports + YAML configs are enough to reproduce charts. A DB or UI would delay the goodput curve without improving the interview story.
+Experiment cardinality is low (tens to hundreds of runs). JSON reports + YAML configs are enough to reproduce charts. A DB or UI would delay the goodput curve without improving the engineering story.
