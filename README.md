@@ -93,6 +93,10 @@ goodput-run --dollar experiments/dollar.yaml
 
 Uses `artifacts/sweeps/phase2-sweep/comparison.json` when present; otherwise runs `experiments/sweep.yaml` first. JSON/CSV/markdown land at `artifacts/sweeps/dollar-impact/` (gitignored). The markdown labels the Lambda Cloud H100 list price as back-of-envelope, not a quote.
 
+## Reproducibility
+
+Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
+
 ## Compose cluster
 
 Two CPU worker containers + a host SIGKILL script (ticket 2.4). Recipe: [`docker/README.md`](docker/README.md).

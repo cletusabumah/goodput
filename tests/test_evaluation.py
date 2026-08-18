@@ -54,6 +54,9 @@ def test_build_run_report_has_required_fields() -> None:
     assert report["wasted_gpu_hours"] == pytest.approx(compute_wasted_gpu_hours(10.0, 8.0, 2))
     assert report["run_name"] == "unit-report"
     assert report["seed"] == 7
+    assert "config_hash" in report
+    assert "git_sha" in report
+    assert "package_versions" in report
 
 
 def test_emit_run_report_to_mock_sink() -> None:

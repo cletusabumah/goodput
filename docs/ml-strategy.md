@@ -62,9 +62,9 @@ N/A for predictive leakage — data is synthetic. Guards that **do** apply:
 ## Reproducibility
 
 - `GOODPUT_SEED` + per-worker seed derivation
-- Log: git SHA, `pip freeze` hash or package versions, config hash
+- Log: git SHA, package versions (+ hash of that map), config hash of training knobs
 - Commit experiment YAMLs under `experiments/`
-- Artifact naming: `{run_name}/{config_hash}/{timestamp}/report.json`
+- Reports stay at `artifacts/reports/<run_name>/report.json` with the hash **inside** the JSON (the `{run_name}/{config_hash}/{timestamp}/` layout is still a naming convention for later)
 
 ## Model registry / artifacts
 

@@ -1,7 +1,7 @@
-"""Run report schema + builders (ticket 1.7).
+"""Run report schema + builders (tickets 1.7 / 3.4).
 
 MVP fields match README / ml-strategy: goodput, ckpt save/restore latency,
-and a wasted GPU-hours proxy (CPU-time × workers when no GPU).
+a wasted GPU-hours proxy, plus git SHA / config hash / package versions.
 """
 
 from __future__ import annotations
@@ -10,9 +10,10 @@ from typing import Any
 
 from goodput.config import Settings
 from goodput.metrics.goodput import compute_goodput, compute_wasted_gpu_hours
+from goodput.metrics.reproducibility import reproducibility_fields
 from goodput.providers.base import MetricsSink
 
-# Keys that must appear in every emitted report (ticket Done-when).
+# Keys that must appear in every emitted report (tickets 1.7 / 3.4).
 REQUIRED_REPORT_FIELDS: tuple[str, ...] = (
     "goodput",
     "ckpt_save_s",
@@ -24,9 +25,12 @@ REQUIRED_REPORT_FIELDS: tuple[str, ...] = (
     "steps_completed",
     "seed",
     "run_name",
+    "git_sha",
+    "config_hash",
+    "package_versions",
 )
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 def mean_or_zero(values: list[float]) -> float:
@@ -85,6 +89,8 @@ def build_run_report(
         report["final_loss"] = float(final_loss)
     if extra:
         report.update(extra)
+    # Ticket 3.4 — SHA / versions / config hash win over extra so reports stay complete.
+    report.update(reproducibility_fields(settings))
     return report
 
 

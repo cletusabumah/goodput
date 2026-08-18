@@ -53,6 +53,10 @@ def _print_metrics(report: dict[str, Any]) -> None:
         f"ckpt_restore_s={report['ckpt_restore_s']:.6f} "
         f"wasted_gpu_hours={report['wasted_gpu_hours']:.6f}"
     )
+    git = report.get("git_sha") or "unknown"
+    short = git[:12] if git != "unknown" else git
+    dirty = " dirty" if report.get("git_dirty") else ""
+    print(f"repro git={short}{dirty} config={report.get('config_hash', '')}")
 
 
 def _report_from_train(settings: Settings, result: TrainResult) -> dict[str, Any]:
