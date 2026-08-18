@@ -4,7 +4,7 @@ Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 6)
+## Cumulative takeaways (through Week 7)
 
 Worth saying in an interview, not just a changelog:
 
@@ -31,6 +31,9 @@ Worth saying in an interview, not just a changelog:
 21. **Silent corruption is a different product than crash.** A sign-bit flip keeps L2 norm, so a magnitude-only detector misses it. Cross-rank agreement (or checksums) is the real hook. Training **continues** — goodput can look fine while the run is poisoned.
 22. **Inject races are Done-when failures.** Parent and workers share hang/bitflip slots. Arm hang before rank 0 can publish the next step; pre-set bitflip `(rank, step)` at spawn. If progress advances “during detection,” you did not hang.
 23. **Dollar models must stay labeled.** Measured toy Δgoodput × simulated cluster × public list price is interview-scale arithmetic, **not a quote**. Millisecond sweep walls will print million-dollar swings of the wrong sign — the artifact is the formula + disclaimer, not the dollar figure.
+24. **Repro is three IDs, not one field.** `git_sha` = code, `config_hash` = training knobs, `package_versions` = deps. Same-seed **loss** must match within tolerance; wall-clock is allowed to drift. `git_dirty: true` means “SHA + local edits.”
+25. **Hash what changes the experiment, not the laptop.** `config_hash` excludes `artifacts_dir`, `ckpt_dir`, and provider backends so committed YAML hashes the same in CI `tmp_path` and on your machine.
+26. **The demo script is the deliverable.** `./scripts/portfolio-demo.sh` regenerates smoke + sweep + latency + dollar from committed YAML; matplotlib stays optional (`[viz]`) like mocks — skip plot, not fail the walkthrough.
 
 ---
 
@@ -334,27 +337,42 @@ Weekly build log and cumulative takeaways **1–23** below — use 2–3 that ma
 
 ---
 
-## Week 7
+## Week 7 — Phase 3 close (reproducibility + portfolio polish)
 
 **Shipped:**
 
-- 
+- **3.4 Reproducibility pack** — Every `build_run_report` payload includes `git_sha`, `git_dirty`, `config_hash`, `package_versions`, `versions_hash` (schema **1.1**). `config_hash` hashes training knobs only (paths/providers excluded). CLI prints `repro git=… config=…`. Done-when: two same-seed trains match loss within tolerance (`tests/test_reproducibility.py`).
+- **3.5 Portfolio polish** — `./scripts/portfolio-demo.sh` (pytest → ci-smoke → sweep → optional plot → latency → dollar); expanded `docs/architecture.md` (CLI flow, fault sequence, three-story table, fidelity notes); **§ Interview walkthrough** + README Phase 3 status.
+- **Phase 3 exit:** goodput-vs-rate chart (2.3) + latency table (2.5) + dollar model (3.3) regenerable from one clone-and-run story; repro fields on every per-run JSON.
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **What belongs in `config_hash`:** Including `artifacts_dir` / `run_name` would make identical experiment YAML hash differently per machine or pytest `tmp_path`. Fix: explicit `CONFIG_HASH_FIELDS` list — training + fault knobs only; paths stay out.
+2. **Repro Done-when vs wall clock:** Same seed can produce identical losses but different `wall_seconds` / `goodput` if the OS schedules differently. Tests assert **loss trajectory + config_hash**, not timing equality — honest for a portfolio metric story.
+3. **Schema bump ripples:** Adding `git_sha`, `config_hash`, and `package_versions` to required report fields touches every report test and CI smoke. Bumping `schema_version` to 1.1 documents the contract change.
+4. **Portfolio demo pacing:** Full `./scripts/portfolio-demo.sh` runs pytest + six sweep cells + N=1,2,4 latency + dollar (~1–3 min). Matplotlib is optional — script skips plot with a hint rather than failing; `--dry-run` / `--skip-tests` keep CI and quick checks fast.
 
 **Metrics / evidence:**
 
-- 
+- `goodput-run --config experiments/ci-smoke.yaml` → report with `git_sha`, `config_hash`, `package_versions`; CLI `repro git=… dirty config=…`
+- `./scripts/portfolio-demo.sh` → pytest green; sweep six cells; plot PNG when matplotlib installed; `latency-table/table.md`; `dollar-impact/table.md`
+- `./scripts/portfolio-demo.sh --dry-run` covered by `tests/test_portfolio_demo.py`
+- Phase 3 master-plan exit: three-story portfolio + `./scripts/portfolio-demo.sh` walkthrough in `docs/what_i_learned.md`
+
+**Other lessons:**
+
+- Pin core deps in `package_versions`, not full `pip freeze` — editable install paths make freeze hashes unstable.
+- Interview walkthrough lives **above** the weekly log so an interviewer does not scroll through six weeks of changelog.
+- Week 7 closes the 6–8 week MVP arc on paper; Phase 4 is explicitly stretch / optional defer.
 
 **Blockers:**
 
-- 
+- None that blocked **3.4–3.5**. Dollar millions on a full demo run are expected toy noise at Llama-scale scaling — say the disclaimer, don’t debug the sign.
 
 **Next week focus:**
 
-- 
+- Phase 4 stretch (pick one or defer with reason): **4.1** goodput vs worker count, **4.2** Colab GPU notebook, **4.3** tracker stub, **4.4** torch.distributed.checkpoint comparison note
+- Or: stop at Phase 3 and use the repo as-is for interviews — exit criteria already met 
 
 ---
 

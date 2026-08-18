@@ -24,9 +24,9 @@
       "id": "week7-learned",
       "title": "Fill Week 7 section in docs/what_i_learned.md",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-18T02:52:00.000000+00:00",
+      "completed_by": "cletus"
     }
   ]
 }
