@@ -14,8 +14,8 @@ Read in this order for Phase 0 orientation:
 10. [`privacy-security.md`](privacy-security.md) + [`test-data-protocol.md`](test-data-protocol.md)
 11. [`github-access.md`](github-access.md) — 2FA + branch protection
 12. [`roadmap.md`](roadmap.md) — high-level phases
-13. [`what_i_learned.md`](what_i_learned.md) — weekly portfolio log + **§ Interview walkthrough**
+13. [`what_i_learned.md`](what_i_learned.md) — weekly engineering log + **§ Demo walkthrough**
 
 ## Product / persona notes
 
-[`product-features.md`](product-features.md) maps features to personas (interviewer, self-as-operator, future infra teammate). This is **not** a consumer SaaS product — discard Pigeon-style end-user UX framing where it does not apply.
+[`product-features.md`](product-features.md) maps features to personas (operator, metrics reader, collaborator). This is **not** a consumer SaaS product — discard Pigeon-style end-user UX framing where it does not apply.

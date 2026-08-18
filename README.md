@@ -2,7 +2,7 @@
 
 **Distributed training fault-injection & checkpoint simulator**
 
-A solo, portfolio-grade ML infrastructure project that measures **goodput** — the fraction of GPU-hours that produce useful, un-lost training progress — under injected worker failures, with and without fast incremental checkpointing.
+An ML infrastructure simulator that measures **goodput** — the fraction of GPU-hours that produce useful, un-lost training progress — under injected worker failures, with and without fast incremental checkpointing.
 
 Inspired by Meta’s Llama cluster interruption story and Google’s TPU “goodput” problem: at large GPU counts, hardware failure is routine, and a naive restart-from-scratch job wastes enormous compute.
 
@@ -41,7 +41,7 @@ See [`docs/mvp-spec.md`](docs/mvp-spec.md) and [`docs/vision.md`](docs/vision.md
 Requires **Python 3.11+** (CI uses 3.11; local may use 3.12/3.13).
 
 ```bash
-git clone git@github.com:cletusabumah/goodput.git
+git clone https://github.com/cletusabumah/goodput.git
 cd goodput
 python3 -m venv .venv   # or: python3.13 -m venv .venv
 source .venv/bin/activate
@@ -97,9 +97,9 @@ Uses `artifacts/sweeps/phase2-sweep/comparison.json` when present; otherwise run
 
 Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
 
-## Portfolio demo (interview walkthrough)
+## Demo script
 
-Regenerate all three portfolio artifacts from committed YAML in one script (ticket 3.5):
+Regenerate the three main evaluation artifacts from committed YAML in one script (ticket 3.5):
 
 ```bash
 source .venv/bin/activate
@@ -115,7 +115,7 @@ Dry-run (print commands only): `./scripts/portfolio-demo.sh --dry-run`
 | Latency | Ckpt save/restore vs worker count | `artifacts/sweeps/latency-table/table.md` |
 | Dollar | Labeled $ estimate from measured Δgoodput | `artifacts/sweeps/dollar-impact/table.md` |
 
-Talking points and honest caveats: [`docs/what_i_learned.md`](docs/what_i_learned.md) (§ Interview walkthrough). Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
+Caveats and a short demo script: [`docs/what_i_learned.md`](docs/what_i_learned.md) (§ Demo walkthrough). Architecture diagrams: [`docs/architecture.md`](docs/architecture.md).
 
 ## Compose cluster
 
@@ -132,10 +132,10 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 ## Status
 
-**Phase 3 — portfolio-ready.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, dollar narrative, reproducibility pack, and `./scripts/portfolio-demo.sh` for a one-command interview walkthrough.
+**Phase 3 complete.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, a dollar narrative, a reproducibility pack, and `./scripts/portfolio-demo.sh` to regenerate the evaluation artifacts in one command.
 
 Next (optional stretch): Phase 4 — goodput vs worker count, Colab GPU demo, experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
 
-## License / visibility
+## License
 
-Private repository. Owner: **Cletus Abumah** (`cletusabumah`).
+MIT License. This is a **public** repository. Copyright © 2026 **Cletus Abumah** (`cletusabumah`). See [`LICENSE`](LICENSE).

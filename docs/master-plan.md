@@ -1,11 +1,11 @@
 # Goodput Master Plan — Phase 0 → Ship
 
-We work through these steps in order. This is the build plan from first commit to portfolio-ready metrics.
+We work through these steps in order. This is the build plan from first commit to shipped metrics.
 
 **Start date:** Week of Phase 0 merge  
 **Target duration:** 6–8 weeks  
 **Team:** Cletus Abumah (solo), ~10–15 hrs/week  
-**Goal:** Measurable goodput before/after fast checkpointing + interviewer-ready narrative
+**Goal:** Measurable goodput before/after fast checkpointing, plus a reproducible evaluation story
 
 **Owner in all tables:** **Cletus**
 
@@ -75,7 +75,7 @@ Do not skip Phase 0. Parallel work inside a week is fine when dependencies allow
 | 3.2 | Bit-flip injector (gradient corruption) stub + optional detector | Cletus | Injected corruption changes loss trajectory in test |
 | 3.3 | Dollar-impact script (public $/GPU-hr × goodput delta) | Cletus | Markdown/JSON estimate from measured deltas |
 | 3.4 | Reproducibility pack: SHA, versions, config hash in reports | Cletus | Two runs with same seed match within tolerance |
-| 3.5 | Portfolio polish: architecture diagram, README demo script, learned log | Cletus | Ready for resume / interview walkthrough |
+| 3.5 | Portfolio polish: architecture diagram, README demo script, learned log | Cletus | Ready for a public demo walkthrough |
 
 **Exit criteria:** Three-story portfolio: goodput curve, scale latency, dollar model.
 

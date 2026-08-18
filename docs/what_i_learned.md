@@ -1,12 +1,12 @@
 # What I learned
 
-Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
+Weekly engineering log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
 ## Cumulative takeaways (through Week 7)
 
-Worth saying in an interview, not just a changelog:
+Worth stating clearly, not just as a changelog:
 
 1. **Goodput is the product.** The toy MLP is disposable. The deliverable is measurable useful-compute fraction under failure — the same loop Meta/Google care about at cluster scale (MTBF collapses as GPU count grows; checkpoint frequency is an explicit trade-off).
 2. **Synchronized training changes the failure model.** One dead worker stalls everyone waiting on all-reduce. That’s why kill → restore → resume is infra, not “retry the job from zero.”
@@ -30,16 +30,16 @@ Worth saying in an interview, not just a changelog:
 20. **Hang detection is a liveness check, not an exit code.** The worker is still alive; you need a heartbeat / progress timeout. Kill is “process gone”; hang is “process stuck.” Same split as cluster health checks vs crash handlers.
 21. **Silent corruption is a different product than crash.** A sign-bit flip keeps L2 norm, so a magnitude-only detector misses it. Cross-rank agreement (or checksums) is the real hook. Training **continues** — goodput can look fine while the run is poisoned.
 22. **Inject races are Done-when failures.** Parent and workers share hang/bitflip slots. Arm hang before rank 0 can publish the next step; pre-set bitflip `(rank, step)` at spawn. If progress advances “during detection,” you did not hang.
-23. **Dollar models must stay labeled.** Measured toy Δgoodput × simulated cluster × public list price is interview-scale arithmetic, **not a quote**. Millisecond sweep walls will print million-dollar swings of the wrong sign — the artifact is the formula + disclaimer, not the dollar figure.
+23. **Dollar models must stay labeled.** Measured toy Δgoodput × simulated cluster × public list price is back-of-envelope arithmetic, **not a quote**. Millisecond sweep walls will print million-dollar swings of the wrong sign — the artifact is the formula + disclaimer, not the dollar figure.
 24. **Repro is three IDs, not one field.** `git_sha` = code, `config_hash` = training knobs, `package_versions` = deps. Same-seed **loss** must match within tolerance; wall-clock is allowed to drift. `git_dirty: true` means “SHA + local edits.”
 25. **Hash what changes the experiment, not the laptop.** `config_hash` excludes `artifacts_dir`, `ckpt_dir`, and provider backends so committed YAML hashes the same in CI `tmp_path` and on your machine.
 26. **The demo script is the deliverable.** `./scripts/portfolio-demo.sh` regenerates smoke + sweep + latency + dollar from committed YAML; matplotlib stays optional (`[viz]`) like mocks — skip plot, not fail the walkthrough.
 
 ---
 
-## Interview walkthrough (~5 minutes)
+## Demo walkthrough (~5 minutes)
 
-Use this script live or send the repo link. Regenerate everything:
+Regenerate everything:
 
 ```bash
 source .venv/bin/activate
@@ -77,7 +77,7 @@ Every `report.json` also logs **`git_sha`**, **`config_hash`**, and **`package_v
 
 ### Deeper narrative
 
-Weekly build log and cumulative takeaways **1–23** below — use 2–3 that match the interviewer’s question (sync training, provider mocks for CI, resume iterator bugs, inject races, sign-bit detection, etc.).
+Weekly build log and cumulative takeaways **1–26** below — pick 2–3 that match the question at hand (sync training, provider mocks for CI, resume iterator bugs, inject races, sign-bit detection, etc.).
 
 ---
 
@@ -342,7 +342,7 @@ Weekly build log and cumulative takeaways **1–23** below — use 2–3 that ma
 **Shipped:**
 
 - **3.4 Reproducibility pack** — Every `build_run_report` payload includes `git_sha`, `git_dirty`, `config_hash`, `package_versions`, `versions_hash` (schema **1.1**). `config_hash` hashes training knobs only (paths/providers excluded). CLI prints `repro git=… config=…`. Done-when: two same-seed trains match loss within tolerance (`tests/test_reproducibility.py`).
-- **3.5 Portfolio polish** — `./scripts/portfolio-demo.sh` (pytest → ci-smoke → sweep → optional plot → latency → dollar); expanded `docs/architecture.md` (CLI flow, fault sequence, three-story table, fidelity notes); **§ Interview walkthrough** + README Phase 3 status.
+- **3.5 Portfolio polish** — `./scripts/portfolio-demo.sh` (pytest → ci-smoke → sweep → optional plot → latency → dollar); expanded `docs/architecture.md` (CLI flow, fault sequence, three-story table, fidelity notes); **§ Demo walkthrough** + README Phase 3 status.
 - **Phase 3 exit:** goodput-vs-rate chart (2.3) + latency table (2.5) + dollar model (3.3) regenerable from one clone-and-run story; repro fields on every per-run JSON.
 
 **Hard problems:**
@@ -362,7 +362,7 @@ Weekly build log and cumulative takeaways **1–23** below — use 2–3 that ma
 **Other lessons:**
 
 - Pin core deps in `package_versions`, not full `pip freeze` — editable install paths make freeze hashes unstable.
-- Interview walkthrough lives **above** the weekly log so an interviewer does not scroll through six weeks of changelog.
+- The demo walkthrough lives **above** the weekly log so a first-time reader does not scroll through six weeks of changelog.
 - Week 7 closes the 6–8 week MVP arc on paper; Phase 4 is explicitly stretch / optional defer.
 
 **Blockers:**
@@ -372,7 +372,7 @@ Weekly build log and cumulative takeaways **1–23** below — use 2–3 that ma
 **Next week focus:**
 
 - Phase 4 stretch (pick one or defer with reason): **4.1** goodput vs worker count, **4.2** Colab GPU notebook, **4.3** tracker stub, **4.4** torch.distributed.checkpoint comparison note
-- Or: stop at Phase 3 and use the repo as-is for interviews — exit criteria already met 
+- Or: stop at Phase 3 — exit criteria already met 
 
 ---
 

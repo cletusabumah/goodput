@@ -4,7 +4,7 @@ Solo owner: **Cletus Abumah** (`cletusabumah`). Complete before treating `main` 
 
 ## Account
 
-- [ ] GitHub account owns private repo `goodput`
+- [ ] GitHub account owns public repo `goodput`
 - [ ] **2FA enabled** ([settings](https://github.com/settings/security))
 - [ ] SSH or HTTPS auth works locally (`git fetch`, `git push`)
 
