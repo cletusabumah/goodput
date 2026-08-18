@@ -4,7 +4,7 @@ Weekly portfolio log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 5)
+## Cumulative takeaways (through Week 6)
 
 Worth saying in an interview, not just a changelog:
 
@@ -27,6 +27,10 @@ Worth saying in an interview, not just a changelog:
 17. **Shared checkpoint volume needs one writer.** When ranks share `latest.pt`, only rank 0 persists (`GOODPUT_RANK` / `settings.rank`). Otherwise concurrent writers race and clobber the restore pointer — same lesson as multiprocess rank-0-only dumps.
 18. **Readiness signals must match the story.** Killing on the first `step_*.pt` landed at step 10 of 400 and skipped worker-1’s report mid-run. Waiting for **post-train reports** aligns the Compose kill demo with “training finished, then failure.”
 19. **Latency table ≠ SIGKILL path.** The 2.5 table times restore via the 1.5 soft-resume path per cell (no SIGKILL in the matrix). On a tiny naive dump, save/restore stay roughly flat; train **wall** grows with spawn + barriers as N increases — that’s the honest scale story for MVP.
+20. **Hang detection is a liveness check, not an exit code.** The worker is still alive; you need a heartbeat / progress timeout. Kill is “process gone”; hang is “process stuck.” Same split as cluster health checks vs crash handlers.
+21. **Silent corruption is a different product than crash.** A sign-bit flip keeps L2 norm, so a magnitude-only detector misses it. Cross-rank agreement (or checksums) is the real hook. Training **continues** — goodput can look fine while the run is poisoned.
+22. **Inject races are Done-when failures.** Parent and workers share hang/bitflip slots. Arm hang before rank 0 can publish the next step; pre-set bitflip `(rank, step)` at spawn. If progress advances “during detection,” you did not hang.
+23. **Dollar models must stay labeled.** Measured toy Δgoodput × simulated cluster × public list price is interview-scale arithmetic, **not a quote**. Millisecond sweep walls will print million-dollar swings of the wrong sign — the artifact is the formula + disclaimer, not the dollar figure.
 
 ---
 
@@ -244,27 +248,45 @@ Worth saying in an interview, not just a changelog:
 
 ---
 
-## Week 6
+## Week 6 — Phase 3 start (hang, bitflip, dollar model)
 
 **Shipped:**
 
-- 
+- **3.1 Hang injector** — One worker blocks on `hang_rank` after a durable checkpoint; parent detects via rank-0 **progress stall** (`wait_for_hang_detection`, `health_check_timeout_s`), not process exit; reap; `resume_after_crash`. CLI `--fault-hang`, `mode: fault_hang`, `experiments/fault-hang.yaml`.
+- **3.2 Bit-flip injector** — Target rank XORs one float32 **sign bit** on a local gradient before the toy all-reduce; training **continues** (no ckpt recovery). Optional rank-0 detector. CLI `--fault-bitflip`, `experiments/fault-bitflip.yaml`. Done-when: loss trajectory diverges from a clean baseline after the flip step.
+- **3.3 Dollar-impact script** — `goodput-run --dollar experiments/dollar.yaml`: pair naive vs incremental goodput from the 2.2 comparison table, then `cluster_size × public $/GPU-hr × hours × Δgoodput`. Default: 16,384 GPUs × 1,296 h × Lambda Cloud 8× H100 SXM on-demand list **$3.99/GPU-hr** (public page, labeled not a quote). Writes `dollar.json` / `.csv` / `table.md`.
+- **Three-story portfolio (partial exit):** goodput-vs-rate chart (2.3) + latency table (2.5) + dollar model (3.3) are all regenerable from committed YAML.
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **Hang inject race:** First version waited for the checkpoint, then set `hang_rank` — rank 0 could publish the next step before the target blocked, so detection saw progress advance. Fix: arm hang as soon as `progress >= fault_at`, then pin `latest.pt`; `wait_for_hang_detection` **fails** if progress moves or every process exits. Done-when is “alive + stalled,” not SIGKILL with extra sleep.
+2. **Sign-bit flips are invisible to L2-norm detectors:** XOR `1 << 31` negates a value; magnitude stays the same, so “one rank’s norm ≫ median” never fires on the real injector. Fix: bitflip demos share a data seed so local grads match until corruption; detector flags **cross-rank desync** when norms still match, and keeps the norm-outlier rule for synthetic spikes. Sharded batches would hide a sign flip.
+3. **Bitflip is not kill/hang:** No restore path. Useful-compute can count poisoned steps as “useful but wrong” (ml-strategy **corrupted steps**). Detector is optional; the loss-divergence test is the contract, not a crash.
+4. **Dollar scaling vs toy noise:** The 2.2 sweep walls are milliseconds; incremental vs naive goodput at `failure_rate=0` can flip sign from spawn/I/O jitter. Scaling that Δ to 16k GPUs prints tens of millions either way. The honest artifact is **labeled arithmetic** (public list price, simulated cluster, measured delta) — not “incremental saved $40M.”
 
 **Metrics / evidence:**
 
-- 
+- `goodput-run --config experiments/fault-hang.yaml` → `ok=True`, `detection_s≈1.0` (matches `health_check_timeout_s: 1.0`), `resumed_from=4`
+- `goodput-run --config experiments/fault-bitflip.yaml` → `ok=True`, `applied=True`, `detected=True` at `fault_at`; `test_bitflip_changes_loss_trajectory` matches clean losses through the flip step, then diverges
+- `goodput-run --dollar experiments/dollar.yaml` → `artifacts/sweeps/dollar-impact/table.md` with disclaimer + public price source; missing comparison JSON runs `experiments/sweep.yaml` first
+- Tests: `tests/test_hang.py`, `tests/test_bitflip.py`, `tests/test_dollar.py` (CI does not need Compose or a prior sweep artifact)
+
+**Other lessons:**
+
+- Hang time is wall, not useful (ml-strategy). Detection latency is its own report field — don’t fold it into `ckpt_restore_s`.
+- Pre-set bitflip `(rank, step)` in shared memory at spawn (unlike hang’s parent `maybe_inject`) so the worker cannot miss the schedule.
+- Evaluation runners keep cloning the same harness: YAML → cells/rows → JSON/CSV/markdown under `artifacts/sweeps/<name>/`. Dollar is a **post-processor** of measured goodput, not a fourth trainer.
+- `gdone` on 3.1–3.3 belonged in those ticket PRs so Week 6 status on `main` does not lag the merges.
 
 **Blockers:**
 
-- 
+- None that blocked tickets **3.1–3.3**. Hang detection flake was a real race, fixed before merge; dollar “wrong-sign” millions are expected toy noise, not a product bug.
 
 **Next week focus:**
 
-- 
+- **3.4** Reproducibility pack: git SHA, versions, config hash in reports; same-seed runs match within tolerance
+- **3.5** Portfolio polish: architecture diagram, README demo script, learned log walkthrough
+- Phase 3 exit: keep the three charts honest in one clone-and-run story (curve + latency + labeled $) 
 
 ---
 
