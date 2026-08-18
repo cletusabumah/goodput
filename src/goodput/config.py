@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     fault_mean_interval: int = Field(default=0, ge=0)
     # Parent polls rank-0 progress; stall at a checkpointed step ⇒ hang (ticket 3.1).
     health_check_timeout_s: float = Field(default=3.0, gt=0)
+    # Cross-rank grad norm ratio detector after a simulated bit-flip (ticket 3.2).
+    bitflip_detect: bool = True
+    bitflip_grad_ratio_threshold: float = Field(default=8.0, gt=1.0)
 
     artifacts_dir: Path = Path("artifacts")
     run_name: str = "local-dev"

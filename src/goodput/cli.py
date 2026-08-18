@@ -21,8 +21,10 @@ from goodput.metrics import build_run_report, emit_run_report
 from goodput.providers import LocalFsCheckpointStore, build_providers
 from goodput.providers.metrics import JsonFileMetricsSink
 from goodput.training import (
+    BitflipResult,
     MultiProcessResult,
     TrainResult,
+    run_bitflip_train,
     run_hang_and_recover,
     run_sigkill_and_recover,
     train_from_settings,
@@ -95,6 +97,29 @@ def _report_from_fault(settings: Settings, result: FaultRecoveryResult) -> dict[
         ckpt_restore_seconds=recovered.ckpt_restore_seconds,
         final_loss=recovered.final_loss,
         extra=extra,
+    )
+
+
+def _report_from_bitflip(settings: Settings, result: BitflipResult) -> dict[str, Any]:
+    rank0 = next((w for w in result.workers if w.rank == 0), None)
+    final_loss = rank0.final_loss if rank0 else float("nan")
+    return build_run_report(
+        settings=settings,
+        wall_seconds=result.wall_seconds,
+        useful_seconds=result.useful_seconds,
+        steps_completed=settings.steps,
+        final_loss=final_loss,
+        extra={
+            "mode": "fault_bitflip",
+            "fault_type": "bitflip",
+            "flip_rank": result.flip_rank,
+            "flip_at_step": result.flip_at_step,
+            "failures_injected": len(result.injected),
+            "bitflip_applied": int(any(w.bitflip_applied for w in result.workers)),
+            "corruption_detected": int(result.corruption_detected),
+            "corruption_detected_at": result.corruption_detected_at,
+            "rank0_losses": result.rank0_losses,
+        },
     )
 
 
@@ -217,6 +242,33 @@ def _run_fault_hang(
     return 0 if result.ok else 1
 
 
+def _run_fault_bitflip(
+    settings: Settings,
+    *,
+    flip_at_step: int,
+    flip_rank: int,
+) -> int:
+    if settings.num_workers < 2:
+        settings = settings.model_copy(update={"num_workers": 2})
+    result = run_bitflip_train(
+        settings,
+        flip_at_step=flip_at_step,
+        flip_rank=flip_rank,
+    )
+    rank0 = next((w for w in result.workers if w.rank == 0), None)
+    print(
+        f"fault-bitflip ok={result.ok} flip_rank={result.flip_rank} "
+        f"flip_at={result.flip_at_step} applied={any(w.bitflip_applied for w in result.workers)} "
+        f"detected={result.corruption_detected} "
+        f"detected_at={result.corruption_detected_at} "
+        f"final_loss={rank0.final_loss if rank0 else float('nan'):.6f}"
+    )
+    report = _report_from_bitflip(settings, result)
+    _emit_and_announce(settings, report)
+    _print_metrics(report)
+    return 0 if result.ok else 1
+
+
 def _run_plot(source: Path, output: Path | None) -> int:
     try:
         rows = load_comparison(source)
@@ -325,10 +377,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Hang one worker mid-run; detect via progress timeout; resume (ticket 3.1)",
     )
     parser.add_argument(
+        "--fault-bitflip",
+        action="store_true",
+        help="Flip one gradient bit on a worker; optional cross-rank detector (ticket 3.2)",
+    )
+    parser.add_argument(
         "--fault-at",
         type=int,
         default=None,
-        help="Completed step at which to SIGKILL (must be a multiple of ckpt_interval)",
+        help="Step at which to inject fault (kill/hang/bitflip; kill/hang need ckpt alignment)",
     )
     parser.add_argument(
         "--fault-rank",
@@ -429,6 +486,13 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             hang_rank = args.fault_rank if args.fault_rank is not None else spec.fault_rank
             return _run_fault_hang(settings, hang_at_step=hang_at, hang_rank=hang_rank)
+        if spec.mode == "fault_bitflip":
+            flip_at = args.fault_at if args.fault_at is not None else spec.fault_at
+            if flip_at is None:
+                print("fault_bitflip requires fault_at in YAML or --fault-at")
+                return 2
+            flip_rank = args.fault_rank if args.fault_rank is not None else spec.fault_rank
+            return _run_fault_bitflip(settings, flip_at_step=flip_at, flip_rank=flip_rank)
         # YAML train path always checkpoints when ckpt_interval > 0.
         return _run_train(settings, use_checkpoint_store=settings.ckpt_interval > 0)
 
@@ -466,13 +530,24 @@ def main(argv: list[str] | None = None) -> int:
             hang_rank=hang_rank,
         )
 
+    if args.fault_bitflip:
+        if args.fault_at is None:
+            print("--fault-bitflip requires --fault-at")
+            return 2
+        flip_rank = args.fault_rank if args.fault_rank is not None else 1
+        return _run_fault_bitflip(
+            settings,
+            flip_at_step=args.fault_at,
+            flip_rank=flip_rank,
+        )
+
     if args.train:
         use_store = args.ckpt_dir is not None
         return _run_train(settings, use_checkpoint_store=use_store)
 
     print(
-        "Pass --train, --fault-kill, --fault-hang, --config, --sweep, --latency, or --plot; "
-        "see docs/phase-1-tickets.md."
+        "Pass --train, --fault-kill, --fault-hang, --fault-bitflip, --config, "
+        "--sweep, --latency, or --plot; see docs/phase-1-tickets.md."
     )
     return 0
 

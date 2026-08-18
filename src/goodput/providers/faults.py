@@ -43,7 +43,7 @@ class ProcessFaultInjector(FaultInjector):
     When ``dry_run=False``:
     - ``kill``: SIGKILL a registered worker PID
     - ``hang``: set ``hang_rank`` shared memory so the worker blocks before the next step
-    Bitflip remains record-only until ticket 3.2.
+    - ``bitflip``: set ``bitflip_rank`` / ``bitflip_at_step`` for gradient corruption
     """
 
     name = "process"
@@ -55,11 +55,15 @@ class ProcessFaultInjector(FaultInjector):
         *,
         dry_run: bool = True,
         hang_rank: Any | None = None,
+        bitflip_rank: Any | None = None,
+        bitflip_at_step: Any | None = None,
     ) -> None:
         self.inject_at = inject_at
         self.fault: FaultType = fault
         self.dry_run = dry_run
         self.hang_rank = hang_rank
+        self.bitflip_rank = bitflip_rank
+        self.bitflip_at_step = bitflip_at_step
         self.worker_pids: dict[int, int] = {}
         self.injected: list[tuple[int, int, str]] = []
 
@@ -85,6 +89,17 @@ class ProcessFaultInjector(FaultInjector):
         if self.fault == "hang" and self.hang_rank is not None:
             with self.hang_rank.get_lock():
                 self.hang_rank.value = worker_id
+            return self.fault
+
+        if (
+            self.fault == "bitflip"
+            and self.bitflip_rank is not None
+            and self.bitflip_at_step is not None
+        ):
+            with self.bitflip_rank.get_lock():
+                self.bitflip_rank.value = worker_id
+            with self.bitflip_at_step.get_lock():
+                self.bitflip_at_step.value = step
             return self.fault
 
         return self.fault

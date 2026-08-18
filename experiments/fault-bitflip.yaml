@@ -1,0 +1,19 @@
+# Gradient bit-flip demo — corrupt one worker's grads, optional detector (ticket 3.2).
+# Run:  goodput-run --config experiments/fault-bitflip.yaml
+name: fault-bitflip-demo
+mode: fault_bitflip
+fault_at: 4
+fault_rank: 1
+fault_mode: bitflip
+num_workers: 2
+steps: 8
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+seed: 42
+bitflip_detect: true
+bitflip_grad_ratio_threshold: 4.0
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
