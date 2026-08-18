@@ -1,0 +1,48 @@
+{
+  "week": 8,
+  "phase": "Phase 4 — Stretch (optional)",
+  "goal": "Optional stretch after Phase 3: ship at least one of goodput vs worker count, Colab GPU demo, tracker stub, or torch.distributed.checkpoint note — or defer remaining items with a written reason (tickets 4.1–4.4).",
+  "label": "Week 8",
+  "tasks": [
+    {
+      "id": "goodput-vs-workers",
+      "title": "Goodput vs worker count (MTBF-at-scale illustration) (ticket 4.1)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "colab-gpu-demo",
+      "title": "Colab GPU demo notebook with documented settings (ticket 4.2)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "tracker-provider",
+      "title": "Tracker provider (MLflow or WandB) behind interface (ticket 4.3)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "torch-ckpt-compare",
+      "title": "Compare against torch.distributed.checkpoint (side-by-side latency note) (ticket 4.4)",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    },
+    {
+      "id": "week8-learned",
+      "title": "Fill Week 8 section in docs/what_i_learned.md",
+      "owner": "cletus",
+      "done": false,
+      "completed_at": null,
+      "completed_by": null
+    }
+  ]
+}
