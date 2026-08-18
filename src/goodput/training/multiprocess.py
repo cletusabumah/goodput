@@ -35,6 +35,10 @@ class WorkerResult:
     error: str | None = None
     ckpt_save_seconds: list[float] = field(default_factory=list)
     last_checkpoint_step: int | None = None
+    losses: list[float] = field(default_factory=list)
+    bitflip_applied: bool = False
+    corruption_detected: bool = False
+    corruption_detected_at: int | None = None
 
 
 @dataclass
@@ -105,12 +109,22 @@ def _worker_entry(
     ckpt_dir: str | None = None,
     ckpt_interval: int = 0,
     hang_rank: Any | None = None,
+    bitflip_rank: Any | None = None,
+    bitflip_at_step: Any | None = None,
+    corruption_detected: Any | None = None,
+    corruption_at_step: Any | None = None,
 ) -> None:
     """Child process target — must be top-level for spawn pickling."""
     try:
         from itertools import cycle
 
         from goodput.checkpointing import IncrementalCheckpointer, capture_training_state
+        from goodput.faults.bitflip import (
+            BITFLIP_RANK_IDLE,
+            BITFLIP_STEP_IDLE,
+            detect_gradient_outlier,
+            flip_float32_bit,
+        )
         from goodput.providers import LocalFsCheckpointStore
 
         settings = Settings(**settings_dict)
@@ -128,12 +142,13 @@ def _worker_entry(
             if settings.ckpt_mode == "incremental":
                 checkpointer = IncrementalCheckpointer(full_every=settings.ckpt_full_every)
 
-        # Shard data by rank so workers are not trivial clones of the same batch stream.
+        # Bit-flip demos reuse the same seed so local grads match until corruption.
+        data_seed = settings.seed if bitflip_at_step is not None else settings.seed + rank * 10_000
         loader = SyntheticDataLoader(
             num_batches=max(1, min(steps, 16)),
             batch_size=settings.batch_size,
             input_size=settings.input_size,
-            seed=settings.seed + rank * 10_000,
+            seed=data_seed,
             device=device,
         )
         stream = cycle(loader)
@@ -141,6 +156,10 @@ def _worker_entry(
         last_loss = float("nan")
         ckpt_save_seconds: list[float] = []
         last_ckpt: int | None = None
+        losses: list[float] = []
+        flipped = False
+        saw_corruption = False
+        corruption_step: int | None = None
 
         for step in range(steps):
             _worker_hang_if_requested(hang_rank, rank)
@@ -154,9 +173,47 @@ def _worker_entry(
 
             # --- toy all-reduce: write local grads → barrier → average → barrier ---
             flat = _flatten_grads(model).detach().cpu()
+            completed = step + 1
+            if (
+                not flipped
+                and bitflip_rank is not None
+                and bitflip_at_step is not None
+            ):
+                with bitflip_rank.get_lock():
+                    target_rank = bitflip_rank.value
+                with bitflip_at_step.get_lock():
+                    target_step = bitflip_at_step.value
+                if (
+                    target_rank == rank
+                    and target_step == completed
+                    and target_rank != BITFLIP_RANK_IDLE
+                    and target_step != BITFLIP_STEP_IDLE
+                ):
+                    flip_float32_bit(flat)
+                    flipped = True
+
             grad_bucket[rank].copy_(flat)
             _worker_hang_if_requested(hang_rank, rank)
             barrier.wait()
+
+            if (
+                rank == 0
+                and settings.bitflip_detect
+                and world_size > 1
+                and corruption_detected is not None
+            ):
+                if detect_gradient_outlier(
+                    grad_bucket,
+                    ratio_threshold=settings.bitflip_grad_ratio_threshold,
+                ):
+                    saw_corruption = True
+                    corruption_step = completed
+                    with corruption_detected.get_lock():
+                        corruption_detected.value = 1
+                    if corruption_at_step is not None:
+                        with corruption_at_step.get_lock():
+                            corruption_at_step.value = completed
+
             averaged = grad_bucket.mean(dim=0)
             _worker_hang_if_requested(hang_rank, rank)
             barrier.wait()
@@ -164,7 +221,7 @@ def _worker_entry(
 
             optimizer.step()
             last_loss = float(loss.item())
-            completed = step + 1
+            losses.append(last_loss)
 
             if store is not None and (
                 completed % ckpt_interval == 0 or completed == steps
@@ -195,6 +252,10 @@ def _worker_entry(
                 ok=math.isfinite(last_loss),
                 ckpt_save_seconds=ckpt_save_seconds,
                 last_checkpoint_step=last_ckpt,
+                losses=losses,
+                bitflip_applied=flipped,
+                corruption_detected=saw_corruption,
+                corruption_detected_at=corruption_step,
             )
         )
     except Exception as exc:  # noqa: BLE001 — surface to parent as WorkerResult

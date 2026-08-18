@@ -8,17 +8,17 @@
       "id": "hang-injector",
       "title": "Hang injector + health-check timeout (ticket 3.1)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-17T23:59:08.598535+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "bitflip-injector",
       "title": "Bit-flip injector (gradient corruption) stub + optional detector (ticket 3.2)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-18T00:21:50.073191+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "dollar-impact",

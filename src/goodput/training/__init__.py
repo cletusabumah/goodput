@@ -1,5 +1,6 @@
 """Training package exports."""
 
+from goodput.training.bitflip import BitflipResult, run_bitflip_train
 from goodput.training.loop import (
     TrainResult,
     resume_after_crash,
@@ -20,12 +21,14 @@ from goodput.training.recovery import (
 )
 
 __all__ = [
+    "BitflipResult",
     "FaultRecoveryResult",
     "MultiProcessResult",
     "TrainResult",
     "WorkerResult",
     "launch_workers",
     "resume_after_crash",
+    "run_bitflip_train",
     "run_hang_and_recover",
     "run_sigkill_and_recover",
     "train_from_settings",

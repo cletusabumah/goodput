@@ -74,6 +74,15 @@ def test_load_fault_hang_yaml(tmp_path: Path) -> None:
     assert spec.settings.fault_mode == "hang"
 
 
+def test_load_fault_bitflip_yaml() -> None:
+    root = Path(__file__).resolve().parents[1]
+    spec = load_experiment_yaml(root / "experiments" / "fault-bitflip.yaml")
+    assert spec.mode == "fault_bitflip"
+    assert spec.fault_at == 4
+    assert spec.settings.bitflip_detect is True
+    assert spec.settings.fault_mode == "bitflip"
+
+
 def test_cli_config_writes_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from goodput.cli import main
 

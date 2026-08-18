@@ -10,7 +10,7 @@ import yaml
 
 from goodput.config import Settings, get_settings
 
-RunMode = Literal["train", "fault_kill", "fault_hang"]
+RunMode = Literal["train", "fault_kill", "fault_hang", "fault_bitflip"]
 
 
 @dataclass(frozen=True)
@@ -49,8 +49,11 @@ def load_experiment_yaml(
     data: dict[str, Any] = dict(raw)
     name = str(data.pop("name", config_path.stem))
     mode_raw = data.pop("mode", "train")
-    if mode_raw not in ("train", "fault_kill", "fault_hang"):
-        raise ValueError(f"mode must be 'train', 'fault_kill', or 'fault_hang', got {mode_raw!r}")
+    if mode_raw not in ("train", "fault_kill", "fault_hang", "fault_bitflip"):
+        raise ValueError(
+            f"mode must be 'train', 'fault_kill', 'fault_hang', or 'fault_bitflip', "
+            f"got {mode_raw!r}"
+        )
     mode: RunMode = mode_raw  # type: ignore[assignment]
     fault_rank = int(data.pop("fault_rank", 1))
 
@@ -72,7 +75,7 @@ def load_experiment_yaml(
     base_settings = base if base is not None else get_settings()
     settings = base_settings.model_copy(update=updates)
 
-    if mode in ("fault_kill", "fault_hang") and fault_at is None:
+    if mode in ("fault_kill", "fault_hang", "fault_bitflip") and fault_at is None:
         raise ValueError(f"{config_path}: mode={mode} requires fault_at")
 
     return ExperimentSpec(
