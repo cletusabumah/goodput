@@ -20,6 +20,8 @@ Read in this order for Phase 0 orientation:
 
 `GOODPUT_TRACKER=mlflow` logs a run (ticket 4.3; JSON fallback if the SDK is missing).
 
+16. [`dcp-compare.md`](dcp-compare.md) — naive vs `torch.distributed.checkpoint` (ticket 4.4)
+
 ## Product / persona notes
 
 [`product-features.md`](product-features.md) maps features to personas (operator, metrics reader, collaborator). This is **not** a consumer SaaS product — discard Pigeon-style end-user UX framing where it does not apply.
