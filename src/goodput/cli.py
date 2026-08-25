@@ -13,9 +13,12 @@ from goodput.evaluation.dollar import load_dollar_yaml, run_dollar
 from goodput.evaluation.latency import load_latency_yaml, run_latency
 from goodput.evaluation.plot import (
     default_plot_path,
+    default_scale_plot_path,
     load_comparison,
     plot_goodput_vs_failure_rate,
+    plot_goodput_vs_workers,
 )
+from goodput.evaluation.scale import load_scale_yaml, run_scale
 from goodput.evaluation.sweep import load_sweep_yaml, run_sweep
 from goodput.experiments import load_experiment_yaml
 from goodput.metrics import build_run_report, emit_run_report
@@ -277,8 +280,13 @@ def _run_fault_bitflip(
 def _run_plot(source: Path, output: Path | None) -> int:
     try:
         rows = load_comparison(source)
-        out = output if output is not None else default_plot_path()
-        written = plot_goodput_vs_failure_rate(rows, out)
+        is_scale = bool(rows) and "num_workers" in rows[0] and "cluster_failure_rate" in rows[0]
+        if is_scale:
+            out = output if output is not None else default_scale_plot_path()
+            written = plot_goodput_vs_workers(rows, out)
+        else:
+            out = output if output is not None else default_plot_path()
+            written = plot_goodput_vs_failure_rate(rows, out)
     except FileNotFoundError as exc:
         print(exc)
         return 2
@@ -330,6 +338,12 @@ def main(argv: list[str] | None = None) -> int:
         type=str,
         default=None,
         help="Dollar YAML: public $/GPU-hr × measured goodput delta (ticket 3.3)",
+    )
+    parser.add_argument(
+        "--scale",
+        type=str,
+        default=None,
+        help="Scale YAML: goodput vs worker count (MTBF-at-scale, ticket 4.1)",
     )
     parser.add_argument(
         "--plot",
@@ -492,6 +506,40 @@ def main(argv: list[str] | None = None) -> int:
             )
         return 0
 
+    if args.scale:
+        try:
+            spec = load_scale_yaml(args.scale)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"scale config error: {exc}")
+            return 2
+        print(
+            f"goodput {__version__} | scale={spec.name} "
+            f"workers={list(spec.worker_counts)} modes={list(spec.ckpt_modes)} "
+            f"per_gpu_rate={spec.per_gpu_failure_rate:g}"
+        )
+        print(f"config={spec.path}")
+        try:
+            result = run_scale(spec)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"scale error: {exc}")
+            return 2
+        print(
+            f"scale cells={len(result.rows)} json={result.json_path} "
+            f"csv={result.csv_path} table={result.table_path}"
+        )
+        if result.plot_path is not None:
+            print(f"plot={result.plot_path}")
+        for row in result.rows:
+            print(
+                f"  workers={row['num_workers']} mode={row['ckpt_mode']} "
+                f"cluster_rate={row['cluster_failure_rate']:g} "
+                f"kill_at={row['kill_at']} goodput={row['goodput']:.4f}"
+            )
+        if args.plot is not None and result.json_path is not None:
+            source = result.json_path if args.plot == "auto" else Path(args.plot)
+            return _run_plot(source, args.plot_out)
+        return 0
+
     if args.plot is not None:
         source = (
             Path("artifacts/sweeps/phase2-sweep/comparison.json")
@@ -587,7 +635,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "Pass --train, --fault-kill, --fault-hang, --fault-bitflip, --config, "
-        "--sweep, --latency, --dollar, or --plot; see docs/phase-1-tickets.md."
+        "--sweep, --latency, --dollar, --scale, or --plot; see docs/phase-1-tickets.md."
     )
     return 0
 

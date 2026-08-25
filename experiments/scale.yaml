@@ -1,0 +1,31 @@
+# Goodput vs worker count — MTBF-at-scale illustration (ticket 4.1).
+# Run:  goodput-run --scale experiments/scale.yaml
+# Out:  artifacts/sweeps/goodput-vs-workers/scale.json + scale.csv + table.md
+# Plot: artifacts/sweeps/goodput-vs-workers/goodput_vs_workers.png (if matplotlib)
+#
+# Cluster interruption rate = N × per_gpu_failure_rate (independent GPU failures).
+# Training is the 2.2 soft-crash path; N is simulated cluster size, not spawn count.
+name: goodput-vs-workers
+mode: scale
+worker_counts:
+  - 1
+  - 2
+  - 4
+ckpt_modes:
+  - naive
+  - incremental
+per_gpu_failure_rate: 0.125
+seed: 42
+num_workers: 1
+steps: 8
+batch_size: 4
+input_size: 8
+hidden_size: 16
+learning_rate: 0.01
+ckpt_interval: 2
+ckpt_full_every: 2
+ckpt_dir: artifacts/checkpoints/scale
+fault_mode: none
+device: cpu
+artifacts_dir: artifacts
+metrics_provider: json_file
