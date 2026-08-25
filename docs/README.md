@@ -18,6 +18,8 @@ Read in this order for Phase 0 orientation:
 14. [`scale.md`](scale.md) — goodput vs worker count (ticket 4.1 MTBF illustration)
 15. [`../notebooks/README.md`](../notebooks/README.md) — Colab GPU demo (ticket 4.2)
 
+`GOODPUT_TRACKER=mlflow` logs a run (ticket 4.3; JSON fallback if the SDK is missing).
+
 ## Product / persona notes
 
 [`product-features.md`](product-features.md) maps features to personas (operator, metrics reader, collaborator). This is **not** a consumer SaaS product — discard Pigeon-style end-user UX framing where it does not apply.

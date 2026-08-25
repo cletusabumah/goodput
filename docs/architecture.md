@@ -129,6 +129,11 @@ FaultInjector (ABC)
 MetricsSink (ABC)
   ├── StdoutMetricsSink
   └── JsonFileMetricsSink      # artifacts/reports/<run>/report.json
+
+Tracker (ticket 4.3)
+  ├── NullTracker               # tracker=none; default
+  ├── MLflowTracker             # GOODPUT_TRACKER=mlflow (SDK or JSON fallback)
+  └── WandbTracker              # GOODPUT_TRACKER=wandb (SDK or JSON fallback)
 ```
 
 CI **must** default to mock/lightweight providers. Real process kills run in integration/manual tests only.

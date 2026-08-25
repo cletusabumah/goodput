@@ -41,6 +41,9 @@ def _emit_and_announce(settings: Settings, report: dict[str, Any]) -> Path | Non
     """Write report via configured sink; return path when using json_file."""
     providers = build_providers(settings)
     emit_run_report(providers.metrics, report)
+    run_id = providers.tracker.log_run(report)
+    if run_id is not None:
+        print(f"tracker={providers.tracker.name} run={run_id}")
     if isinstance(providers.metrics, JsonFileMetricsSink):
         path = providers.metrics.path
         print(f"report={path}")

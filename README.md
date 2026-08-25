@@ -107,6 +107,16 @@ JSON/CSV plus a markdown write-up land at `artifacts/sweeps/goodput-vs-workers/`
 
 Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
 
+## Experiment tracker
+
+Optional MLflow/WandB logging behind `Settings.tracker` (ticket 4.3). Default is `none`.
+
+```bash
+GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml
+```
+
+Without the SDK, a JSON run is written under `artifacts/mlflow/`. For a real local MLflow store: `pip install -e ".[tracker]"` (URI `file:./artifacts/mlruns`).
+
 ## Colab GPU demo
 
 Short single-process train on a Colab T4 (CPU if no GPU). Knobs match `experiments/colab.yaml` (ticket 4.2):
@@ -154,7 +164,7 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 **Phase 3 complete.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, a dollar narrative, a reproducibility pack, and `./scripts/portfolio-demo.sh` to regenerate the evaluation artifacts in one command.
 
-Phase 4 stretch: goodput vs worker count is `goodput-run --scale experiments/scale.yaml`; GPU demo is [`notebooks/colab_gpu_demo.ipynb`](notebooks/colab_gpu_demo.ipynb). Remaining optional: experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
+Phase 4 stretch: goodput vs worker count (`--scale`), Colab notebook, tracker via `GOODPUT_TRACKER=mlflow`. Remaining optional: `torch.distributed.checkpoint` note. See [`docs/master-plan.md`](docs/master-plan.md).
 
 ## License
 

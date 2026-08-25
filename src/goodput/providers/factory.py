@@ -11,6 +11,7 @@ from goodput.providers.base import CheckpointStore, FaultInjector, MetricsSink
 from goodput.providers.checkpoint import LocalFsCheckpointStore, MockCheckpointStore
 from goodput.providers.faults import FaultType, MockFaultInjector, ProcessFaultInjector
 from goodput.providers.metrics import JsonFileMetricsSink, MockMetricsSink, StdoutMetricsSink
+from goodput.providers.tracker import MLflowTracker, NullTracker, Tracker, WandbTracker
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,7 @@ class Providers:
     checkpoint: CheckpointStore
     fault: FaultInjector
     metrics: MetricsSink
+    tracker: Tracker
 
 
 def _parse_fault_at(fault_at: str) -> int | None:
@@ -76,4 +78,25 @@ def build_providers(settings: Settings, *, artifacts_dir: Path | None = None) ->
     else:
         raise ValueError(f"Unknown metrics_provider: {settings.metrics_provider}")
 
-    return Providers(checkpoint=checkpoint, fault=fault, metrics=metrics)
+    kind = settings.tracker
+    if kind == "none":
+        tracker: Tracker = NullTracker()
+    elif kind == "mlflow":
+        tracker = MLflowTracker(
+            tracking_uri=settings.mlflow_tracking_uri,
+            artifacts_dir=Path(root),
+        )
+    elif kind == "wandb":
+        tracker = WandbTracker(
+            project=settings.wandb_project,
+            artifacts_dir=Path(root),
+        )
+    else:
+        raise ValueError(f"Unknown tracker: {kind}")
+
+    return Providers(
+        checkpoint=checkpoint,
+        fault=fault,
+        metrics=metrics,
+        tracker=tracker,
+    )

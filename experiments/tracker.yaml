@@ -1,0 +1,19 @@
+# Ticket 4.3 — log a train report to the MLflow tracker (local file / JSON fallback).
+# Run:  GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml
+# Or set tracker: mlflow below.
+name: tracker-demo
+mode: train
+seed: 42
+num_workers: 1
+steps: 4
+batch_size: 4
+input_size: 8
+hidden_size: 8
+learning_rate: 0.01
+ckpt_interval: 0
+ckpt_mode: naive
+fault_mode: none
+device: cpu
+tracker: mlflow
+artifacts_dir: artifacts
+metrics_provider: json_file
