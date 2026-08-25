@@ -1,0 +1,23 @@
+# Colab GPU demo knobs (ticket 4.2). Notebook copies these values.
+# Local:  goodput-run --config experiments/colab.yaml
+# Colab:  Runtime → Change runtime type → T4 GPU, then run notebooks/colab_gpu_demo.ipynb
+#
+# Short, single-process, synthetic data. device=cuda in YAML; train_from_settings
+# falls back to CPU if CUDA is missing so this file is CI-safe.
+name: colab-gpu-demo
+mode: train
+seed: 42
+num_workers: 1
+steps: 12
+batch_size: 8
+input_size: 16
+hidden_size: 32
+learning_rate: 0.01
+ckpt_interval: 4
+ckpt_mode: naive
+ckpt_dir: artifacts/checkpoints/colab
+fault_mode: none
+device: cuda
+artifacts_dir: artifacts
+metrics_provider: json_file
+ci_mode: false

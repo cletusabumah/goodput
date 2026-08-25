@@ -139,7 +139,7 @@ CI **must** default to mock/lightweight providers. Real process kills run in int
 |--------|------|
 | Local processes | Day-to-day dev + unit/integration |
 | Docker Compose | Demo “cluster” of N containers (single-process ranks, shared volume) |
-| Colab (optional) | GPU demo |
+| Colab (optional) | GPU demo ([`notebooks/colab_gpu_demo.ipynb`](../notebooks/colab_gpu_demo.ipynb)) |
 | Cloud VMs (stretch) | Multi-node timing fidelity |
 
 ## Fidelity notes

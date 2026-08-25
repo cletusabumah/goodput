@@ -107,6 +107,16 @@ JSON/CSV plus a markdown write-up land at `artifacts/sweeps/goodput-vs-workers/`
 
 Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
 
+## Colab GPU demo
+
+Short single-process train on a Colab T4 (CPU if no GPU). Knobs match `experiments/colab.yaml` (ticket 4.2):
+
+1. Open [`notebooks/colab_gpu_demo.ipynb`](notebooks/colab_gpu_demo.ipynb) in Colab.
+2. **Runtime → Change runtime type → T4 GPU**.
+3. Run all cells.
+
+Local: `goodput-run --config experiments/colab.yaml` (CPU fallback without CUDA). Details: [`notebooks/README.md`](notebooks/README.md).
+
 ## Demo script
 
 Regenerate the three main evaluation artifacts from committed YAML in one script (ticket 3.5):
@@ -144,7 +154,7 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 **Phase 3 complete.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, a dollar narrative, a reproducibility pack, and `./scripts/portfolio-demo.sh` to regenerate the evaluation artifacts in one command.
 
-Phase 4 stretch started: goodput vs worker count is `goodput-run --scale experiments/scale.yaml`. Remaining optional: Colab GPU demo, experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
+Phase 4 stretch: goodput vs worker count is `goodput-run --scale experiments/scale.yaml`; GPU demo is [`notebooks/colab_gpu_demo.ipynb`](notebooks/colab_gpu_demo.ipynb). Remaining optional: experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
 
 ## License
 
