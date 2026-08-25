@@ -15,6 +15,7 @@ Read in this order for Phase 0 orientation:
 11. [`github-access.md`](github-access.md) — 2FA + branch protection
 12. [`roadmap.md`](roadmap.md) — high-level phases
 13. [`what_i_learned.md`](what_i_learned.md) — weekly engineering log + **§ Demo walkthrough**
+14. [`scale.md`](scale.md) — goodput vs worker count (ticket 4.1 MTBF illustration)
 
 ## Product / persona notes
 

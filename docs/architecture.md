@@ -99,7 +99,7 @@ sequenceDiagram
 | Training | Multi-worker loop + barriers | `src/goodput/training/` |
 | Checkpoint | Save/restore providers | `src/goodput/checkpointing/` + `providers/` |
 | Faults | Kill, hang, bit-flip injectors | `src/goodput/faults/` + `providers/` |
-| Evaluation | Sweep, latency, dollar, plot | `src/goodput/evaluation/` |
+| Evaluation | Sweep, latency, dollar, scale, plot | `src/goodput/evaluation/` |
 | Metrics | Goodput + repro pack | `src/goodput/metrics/` |
 | Inference / serving | **Out of MVP scope** | Packages reserved; no FastAPI app yet |
 
@@ -112,6 +112,8 @@ sequenceDiagram
 | **3 — Dollar narrative** | What is a labeled $ impact of a measured Δgoodput? | `goodput-run --dollar experiments/dollar.yaml` | `artifacts/sweeps/dollar-impact/table.md` |
 
 Each per-run JSON report also carries **reproducibility** fields (ticket 3.4): `git_sha`, `config_hash`, `package_versions`.
+
+**Stretch (4.1):** `goodput-run --scale experiments/scale.yaml` — goodput vs simulated cluster size N (interruption rate ∝ N). See [`scale.md`](scale.md).
 
 ## Provider pattern (CI-critical)
 

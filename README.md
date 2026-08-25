@@ -93,6 +93,16 @@ goodput-run --dollar experiments/dollar.yaml
 
 Uses `artifacts/sweeps/phase2-sweep/comparison.json` when present; otherwise runs `experiments/sweep.yaml` first. JSON/CSV/markdown land at `artifacts/sweeps/dollar-impact/` (gitignored). The markdown labels the Lambda Cloud H100 list price as back-of-envelope, not a quote.
 
+## Goodput vs worker count
+
+Independent GPU failures make cluster interruptions more frequent as N grows (ticket 4.1):
+
+```bash
+goodput-run --scale experiments/scale.yaml
+```
+
+JSON/CSV plus a markdown write-up land at `artifacts/sweeps/goodput-vs-workers/` (gitignored). Optional PNG if matplotlib is installed. N is **simulated cluster size** (crash schedule ∝ N); it does not spawn N processes. Short write-up: [`docs/scale.md`](docs/scale.md).
+
 ## Reproducibility
 
 Every `artifacts/reports/<run>/report.json` records `git_sha`, `config_hash` (training knobs), and `package_versions` (ticket 3.4). Two runs with the same seed must match loss within tolerance.
@@ -134,7 +144,7 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 **Phase 3 complete.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, a dollar narrative, a reproducibility pack, and `./scripts/portfolio-demo.sh` to regenerate the evaluation artifacts in one command.
 
-Next (optional stretch): Phase 4 — goodput vs worker count, Colab GPU demo, experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
+Phase 4 stretch started: goodput vs worker count is `goodput-run --scale experiments/scale.yaml`. Remaining optional: Colab GPU demo, experiment tracker. See [`docs/master-plan.md`](docs/master-plan.md).
 
 ## License
 

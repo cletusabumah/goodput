@@ -1,4 +1,4 @@
-"""Evaluation helpers — reports, sweep, plot, latency, dollar (1.7 / 2.2 / 2.3 / 2.5 / 3.3)."""
+"""Evaluation helpers — reports, sweep, plot, latency, dollar, scale."""
 
 from goodput.evaluation.dollar import (
     DOLLAR_ROW_FIELDS,
@@ -19,9 +19,21 @@ from goodput.evaluation.latency import (
 )
 from goodput.evaluation.plot import (
     default_plot_path,
+    default_scale_plot_path,
     load_comparison,
     plot_goodput_vs_failure_rate,
+    plot_goodput_vs_workers,
     series_from_comparison,
+    series_from_scale,
+)
+from goodput.evaluation.scale import (
+    SCALE_ROW_FIELDS,
+    ScaleResult,
+    ScaleSpec,
+    cluster_failure_rate,
+    load_scale_yaml,
+    render_scale_table,
+    run_scale,
 )
 from goodput.evaluation.sweep import (
     COMPARISON_FIELDS,
@@ -43,27 +55,37 @@ __all__ = [
     "DOLLAR_ROW_FIELDS",
     "LATENCY_FIELDS",
     "REQUIRED_REPORT_FIELDS",
+    "SCALE_ROW_FIELDS",
     "DollarResult",
     "DollarSpec",
     "LatencyResult",
     "LatencySpec",
+    "ScaleResult",
+    "ScaleSpec",
     "SweepResult",
     "SweepSpec",
     "build_run_report",
+    "cluster_failure_rate",
     "compute_dollar_impact",
     "compute_goodput",
     "default_plot_path",
+    "default_scale_plot_path",
     "emit_run_report",
     "kill_at_for_rate",
     "load_comparison",
     "load_dollar_yaml",
     "load_latency_yaml",
+    "load_scale_yaml",
     "load_sweep_yaml",
     "plot_goodput_vs_failure_rate",
+    "plot_goodput_vs_workers",
     "render_dollar_table",
     "render_latency_table",
+    "render_scale_table",
     "run_dollar",
     "run_latency",
+    "run_scale",
     "run_sweep",
     "series_from_comparison",
+    "series_from_scale",
 ]
