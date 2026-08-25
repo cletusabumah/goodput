@@ -26,6 +26,9 @@ dev = [
 viz = [
   "matplotlib>=3.8",
 ]
+tracker = [
+  "mlflow>=2.0",
+]
 
 [project.scripts]
 goodput-run = "goodput.cli:main"

@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     metrics_provider: Literal["json_file", "stdout", "mock"] = "json_file"
 
     tracker: Literal["none", "mlflow", "wandb"] = "none"
+    # Local file: URI by default — no MLflow cloud account required.
+    mlflow_tracking_uri: str = "file:./artifacts/mlruns"
+    wandb_project: str = "goodput"
     ci_mode: bool = False
 
 

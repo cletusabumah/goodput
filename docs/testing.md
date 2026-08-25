@@ -86,6 +86,8 @@ Write-up: `artifacts/sweeps/goodput-vs-workers/table.md` (also `scale.json` / `s
 
 - Colab GPU demo (ticket 4.2): [`notebooks/colab_gpu_demo.ipynb`](../notebooks/colab_gpu_demo.ipynb). CI does **not** start Colab; `tests/test_colab_demo.py` checks YAML ↔ notebook knobs and a CPU train of the same settings.
 
+- Tracker provider (ticket 4.3): `GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml`. Default CI has no MLflow SDK — the tracker writes `artifacts/mlflow/*.json`. Optional: `pip install -e ".[tracker]"` for a real local `file:./artifacts/mlruns` store.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns

@@ -10,6 +10,7 @@ from goodput.providers.checkpoint import LocalFsCheckpointStore, MockCheckpointS
 from goodput.providers.factory import Providers, build_providers
 from goodput.providers.faults import MockFaultInjector, ProcessFaultInjector
 from goodput.providers.metrics import JsonFileMetricsSink, MockMetricsSink, StdoutMetricsSink
+from goodput.providers.tracker import MLflowTracker, NullTracker, Tracker, WandbTracker
 
 __all__ = [
     "CheckpointPayload",
@@ -17,12 +18,16 @@ __all__ = [
     "FaultInjector",
     "JsonFileMetricsSink",
     "LocalFsCheckpointStore",
+    "MLflowTracker",
     "MetricsSink",
     "MockCheckpointStore",
     "MockFaultInjector",
     "MockMetricsSink",
+    "NullTracker",
     "ProcessFaultInjector",
     "Providers",
     "StdoutMetricsSink",
+    "Tracker",
+    "WandbTracker",
     "build_providers",
 ]

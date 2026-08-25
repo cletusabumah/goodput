@@ -24,9 +24,9 @@
       "id": "tracker-provider",
       "title": "Tracker provider (MLflow or WandB) behind interface (ticket 4.3)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-25T06:03:09.554092+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "torch-ckpt-compare",
