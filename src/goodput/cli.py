@@ -9,6 +9,7 @@ from typing import Any
 
 from goodput import __version__
 from goodput.config import Settings, get_settings
+from goodput.evaluation.dcp_compare import load_dcp_compare_yaml, run_dcp_compare
 from goodput.evaluation.dollar import load_dollar_yaml, run_dollar
 from goodput.evaluation.latency import load_latency_yaml, run_latency
 from goodput.evaluation.plot import (
@@ -349,6 +350,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Scale YAML: goodput vs worker count (MTBF-at-scale, ticket 4.1)",
     )
     parser.add_argument(
+        "--dcp-compare",
+        type=str,
+        default=None,
+        help="Time naive/incremental torch.save vs torch.distributed.checkpoint (ticket 4.4)",
+    )
+    parser.add_argument(
         "--plot",
         nargs="?",
         const="auto",
@@ -543,6 +550,33 @@ def main(argv: list[str] | None = None) -> int:
             return _run_plot(source, args.plot_out)
         return 0
 
+    if args.dcp_compare:
+        try:
+            spec = load_dcp_compare_yaml(args.dcp_compare)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"dcp-compare config error: {exc}")
+            return 2
+        print(
+            f"goodput {__version__} | dcp-compare={spec.name} "
+            f"repeats={spec.repeats} hidden={spec.hidden_size}"
+        )
+        print(f"config={spec.path}")
+        try:
+            result = run_dcp_compare(spec)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"dcp-compare error: {exc}")
+            return 2
+        print(
+            f"dcp-compare rows={len(result.rows)} json={result.json_path} "
+            f"table={result.table_path}"
+        )
+        for row in result.rows:
+            avail = "yes" if row.get("available") else "no"
+            save = row.get("save_s")
+            save_s = f"{save:.6f}" if save is not None else "—"
+            print(f"  path={row['path']} available={avail} save_s={save_s}")
+        return 0
+
     if args.plot is not None:
         source = (
             Path("artifacts/sweeps/phase2-sweep/comparison.json")
@@ -638,7 +672,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "Pass --train, --fault-kill, --fault-hang, --fault-bitflip, --config, "
-        "--sweep, --latency, --dollar, --scale, or --plot; see docs/phase-1-tickets.md."
+        "--sweep, --latency, --dollar, --scale, --dcp-compare, or --plot; "
+        "see docs/phase-1-tickets.md."
     )
     return 0
 

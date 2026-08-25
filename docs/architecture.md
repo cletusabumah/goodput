@@ -115,6 +115,8 @@ Each per-run JSON report also carries **reproducibility** fields (ticket 3.4): `
 
 **Stretch (4.1):** `goodput-run --scale experiments/scale.yaml` — goodput vs simulated cluster size N (interruption rate ∝ N). See [`scale.md`](scale.md).
 
+**Stretch (4.4):** `goodput-run --dcp-compare experiments/dcp-compare.yaml` — latency note vs `torch.distributed.checkpoint`. See [`dcp-compare.md`](dcp-compare.md).
+
 ## Provider pattern (CI-critical)
 
 ```text

@@ -1,0 +1,11 @@
+# Ticket 4.4 — time naive / incremental torch.save vs torch.distributed.checkpoint.
+# Run:  goodput-run --dcp-compare experiments/dcp-compare.yaml
+# Out:  artifacts/sweeps/dcp-compare/table.md + dcp_compare.json
+#
+# CPU, single process, ToyMLP + Adam. Not a multi-rank DCP benchmark.
+name: dcp-compare
+mode: dcp_compare
+repeats: 3
+input_size: 64
+hidden_size: 256
+artifacts_dir: artifacts

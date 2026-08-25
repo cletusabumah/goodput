@@ -117,6 +117,16 @@ GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml
 
 Without the SDK, a JSON run is written under `artifacts/mlflow/`. For a real local MLflow store: `pip install -e ".[tracker]"` (URI `file:./artifacts/mlruns`).
 
+## DCP comparison
+
+Side-by-side save/restore note vs `torch.distributed.checkpoint` (ticket 4.4) — not a DCP rewrite of training:
+
+```bash
+goodput-run --dcp-compare experiments/dcp-compare.yaml
+```
+
+Table: `artifacts/sweeps/dcp-compare/table.md`. Framing: [`docs/dcp-compare.md`](docs/dcp-compare.md).
+
 ## Colab GPU demo
 
 Short single-process train on a Colab T4 (CPU if no GPU). Knobs match `experiments/colab.yaml` (ticket 4.2):
@@ -164,7 +174,7 @@ Start here: [`docs/README.md`](docs/README.md) → [`docs/master-plan.md`](docs/
 
 **Phase 3 complete.** Phases 0–2 shipped kill → restore → goodput, fast-ckpt A/B chart, Compose demo, and latency table. Phase 3 adds hang/bitflip fault modes, a dollar narrative, a reproducibility pack, and `./scripts/portfolio-demo.sh` to regenerate the evaluation artifacts in one command.
 
-Phase 4 stretch: goodput vs worker count (`--scale`), Colab notebook, tracker via `GOODPUT_TRACKER=mlflow`. Remaining optional: `torch.distributed.checkpoint` note. See [`docs/master-plan.md`](docs/master-plan.md).
+Phase 4 stretch: goodput vs worker count (`--scale`), Colab notebook, tracker via `GOODPUT_TRACKER=mlflow`, DCP note via `--dcp-compare`. See [`docs/master-plan.md`](docs/master-plan.md).
 
 ## License
 

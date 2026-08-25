@@ -88,6 +88,8 @@ Write-up: `artifacts/sweeps/goodput-vs-workers/table.md` (also `scale.json` / `s
 
 - Tracker provider (ticket 4.3): `GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml`. Default CI has no MLflow SDK — the tracker writes `artifacts/mlflow/*.json`. Optional: `pip install -e ".[tracker]"` for a real local `file:./artifacts/mlruns` store.
 
+- DCP comparison (ticket 4.4): `goodput-run --dcp-compare experiments/dcp-compare.yaml`. Writes `artifacts/sweeps/dcp-compare/table.md`. Tests use tiny hidden sizes; DCP may be `available: no` if this torch cannot save without a process group.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns

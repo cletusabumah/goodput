@@ -1,5 +1,13 @@
 """Evaluation helpers — reports, sweep, plot, latency, dollar, scale."""
 
+from goodput.evaluation.dcp_compare import (
+    DCP_ROW_FIELDS,
+    DcpCompareResult,
+    DcpCompareSpec,
+    load_dcp_compare_yaml,
+    render_dcp_table,
+    run_dcp_compare,
+)
 from goodput.evaluation.dollar import (
     DOLLAR_ROW_FIELDS,
     DollarResult,
@@ -52,10 +60,13 @@ from goodput.metrics import (
 
 __all__ = [
     "COMPARISON_FIELDS",
+    "DCP_ROW_FIELDS",
     "DOLLAR_ROW_FIELDS",
     "LATENCY_FIELDS",
     "REQUIRED_REPORT_FIELDS",
     "SCALE_ROW_FIELDS",
+    "DcpCompareResult",
+    "DcpCompareSpec",
     "DollarResult",
     "DollarSpec",
     "LatencyResult",
@@ -73,15 +84,18 @@ __all__ = [
     "emit_run_report",
     "kill_at_for_rate",
     "load_comparison",
+    "load_dcp_compare_yaml",
     "load_dollar_yaml",
     "load_latency_yaml",
     "load_scale_yaml",
     "load_sweep_yaml",
+    "render_dcp_table",
     "plot_goodput_vs_failure_rate",
     "plot_goodput_vs_workers",
     "render_dollar_table",
     "render_latency_table",
     "render_scale_table",
+    "run_dcp_compare",
     "run_dollar",
     "run_latency",
     "run_scale",
