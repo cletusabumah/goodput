@@ -84,6 +84,8 @@ Write-up: `artifacts/sweeps/goodput-vs-workers/table.md` (also `scale.json` / `s
 
 - Portfolio demo (ticket 3.5): `./scripts/portfolio-demo.sh` regenerates smoke + sweep + latency + dollar; `./scripts/portfolio-demo.sh --dry-run` for CI.
 
+- Colab GPU demo (ticket 4.2): [`notebooks/colab_gpu_demo.ipynb`](../notebooks/colab_gpu_demo.ipynb). CI does **not** start Colab; `tests/test_colab_demo.py` checks YAML ↔ notebook knobs and a CPU train of the same settings.
+
 - Fresh-clone test after setup-affecting PRs
 
 ## Anti-patterns

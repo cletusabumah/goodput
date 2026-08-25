@@ -8,17 +8,17 @@
       "id": "goodput-vs-workers",
       "title": "Goodput vs worker count (MTBF-at-scale illustration) (ticket 4.1)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-25T05:05:38.747180+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "colab-gpu-demo",
       "title": "Colab GPU demo notebook with documented settings (ticket 4.2)",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-25T05:16:23.837667+00:00",
+      "completed_by": "cletus"
     },
     {
       "id": "tracker-provider",
