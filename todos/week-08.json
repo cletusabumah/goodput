@@ -40,9 +40,9 @@
       "id": "week8-learned",
       "title": "Fill Week 8 section in docs/what_i_learned.md",
       "owner": "cletus",
-      "done": false,
-      "completed_at": null,
-      "completed_by": null
+      "done": true,
+      "completed_at": "2026-08-25T07:26:00.000000+00:00",
+      "completed_by": "cletus"
     }
   ]
 }

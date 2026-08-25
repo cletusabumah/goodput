@@ -4,7 +4,7 @@ Weekly engineering log. Fill at end of each week. Keep it honest and specific.
 
 ---
 
-## Cumulative takeaways (through Week 7)
+## Cumulative takeaways (through Week 8)
 
 Worth stating clearly, not just as a changelog:
 
@@ -34,6 +34,10 @@ Worth stating clearly, not just as a changelog:
 24. **Repro is three IDs, not one field.** `git_sha` = code, `config_hash` = training knobs, `package_versions` = deps. Same-seed **loss** must match within tolerance; wall-clock is allowed to drift. `git_dirty: true` means “SHA + local edits.”
 25. **Hash what changes the experiment, not the laptop.** `config_hash` excludes `artifacts_dir`, `ckpt_dir`, and provider backends so committed YAML hashes the same in CI `tmp_path` and on your machine.
 26. **The demo script is the deliverable.** `./scripts/portfolio-demo.sh` regenerates smoke + sweep + latency + dollar from committed YAML; matplotlib stays optional (`[viz]`) like mocks — skip plot, not fail the walkthrough.
+27. **N as scale is a failure-rate model, not spawn count.** Ticket 4.1 maps cluster interruption rate to `N × per_gpu_rate` (MTBF ~ 1/N) on the same 1-process crash/resume path as the Phase 2 sweep. Confusing that with the 2.5 latency table (real worker spawn) mixes two different stories.
+28. **A Colab demo is documented knobs plus CPU fallback.** The notebook must call `train_from_settings`, not copy a trainer. YAML ↔ notebook lockstep belongs in CI; CI must never start Colab or require a GPU.
+29. **Optional SDKs need an offline fallback.** `GOODPUT_TRACKER=mlflow` still has to log a run when `mlflow` is not installed — JSON under `artifacts/mlflow/` — or CI cannot prove the Done-when. Cloud accounts and extras stay optional.
+30. **A library comparison is a note, not a rewrite.** Timing naive/incremental `torch.save` against `torch.distributed.checkpoint` on 1-rank CPU is regenerable evidence of the API gap. DCP slower here does not mean DCP loses at 16k GPUs; `available: no` on some torch builds is a documented skip, not a CI failure.
 
 ---
 
@@ -376,24 +380,41 @@ Weekly build log and cumulative takeaways **1–26** below — pick 2–3 that m
 
 ---
 
-## Week 8
+## Week 8 — Phase 4 stretch (scale, Colab, tracker, DCP note)
 
 **Shipped:**
 
-- 
+- **4.1 Goodput vs worker count** — `goodput-run --scale experiments/scale.yaml`: `cluster_failure_rate = N × per_gpu_failure_rate` on the Phase 2 soft-crash path. N is **simulated cluster size** (crash schedule + wasted GPU-hours), not multiprocess spawn. JSON/CSV/`table.md` + optional PNG. Write-up: `docs/scale.md`.
+- **4.2 Colab GPU demo** — `notebooks/colab_gpu_demo.ipynb` + `experiments/colab.yaml` (12 steps, seed 42, naive ckpt). Runtime → T4; `train_from_settings` falls back to CPU. CI checks YAML ↔ notebook knobs; does not start Colab.
+- **4.3 Tracker provider** — `Tracker.log_run` on `Providers`; `none` / `mlflow` / `wandb`. `GOODPUT_TRACKER=mlflow goodput-run --config experiments/tracker.yaml` logs a run. Without the SDK, JSON under `artifacts/mlflow/`; optional `pip install -e ".[tracker]"` for a local `file:` store.
+- **4.4 DCP latency note** — `goodput-run --dcp-compare experiments/dcp-compare.yaml`: naive dump vs incremental model-only save vs `torch.distributed.checkpoint` on 1-rank `ToyMLP`+Adam. `docs/dcp-compare.md` + regenerable `table.md`. Not a DCP rewrite of training.
+- **Phase 4 exit:** all four stretch tickets shipped (not deferred). The 6–8 week plan is complete including optional stretch.
 
-**Hard problem:**
+**Hard problems:**
 
-- 
+1. **Two meanings of “workers”:** 4.1’s N scales interruption rate on a 1-process crash cell; 2.5 actually spawns N processes for save/restore latency. Mixing them in one chart would be a lying axis. Docs have to say which N is which.
+2. **Colab vs CI:** A notebook that `pip install`s from GitHub can drift from `main`. Done-when is documented settings + CPU-safe tests, not “CI opened Colab.” GPU quota exhaustion is why fallback is part of the contract.
+3. **Tracker Done-when vs extras:** Requiring real MLflow in default CI would add a heavy optional dep. JSON fallback makes `GOODPUT_TRACKER=mlflow` true in CI; the extra is for people who want `mlruns/`.
+4. **DCP on 1-rank CPU:** Torch warns that distributed is uninitialized and assumes single-process save/load. Incremental can be faster than naive here (skip optimizer pickle); DCP can be slower. That is expected overhead of a sharded protocol on a tiny unsharded blob — not a verdict against DCP at cluster scale. Some builds skip DCP without a process group; that is `available: no`, not a red X.
 
 **Metrics / evidence:**
 
-- 
+- `--scale` → earlier `kill_at` at larger N; `artifacts/sweeps/goodput-vs-workers/table.md`
+- Colab notebook + `goodput-run --config experiments/colab.yaml` on CPU; `tests/test_colab_demo.py`
+- `GOODPUT_TRACKER=mlflow` → `tracker=mlflow run=…` (JSON fallback or `mlruns/`)
+- `--dcp-compare` → three rows; on this laptop naive ~0.9 ms save, incremental ~0.3 ms, DCP ~2.9 ms `available=yes` (torch single-process warnings)
+
+**Other lessons:**
+
+- Phase 4 is labeled stretch so shipping all four is extra, not a promise from Week 1. Stopping after 4.1 would still have met “at least one.”
+- `report.json` and tracker JSON are different files. Seeing `report=artifacts/reports/tracker-demo/report.json` means the train sink worked; the tracker line is `tracker=mlflow run=…`.
+- Torch DCP warnings on macOS (`Redirects are currently not supported`) are library noise, not a failed compare.
 
 **Blockers:**
 
-- 
+- None that blocked **4.1–4.4**. Colab GPU quota and optional MLflow extra are expected limits, handled by fallbacks.
 
 **Next week focus:**
 
-- 
+- No Week 9 ticket list. The numbered plan through Phase 4 is done.
+- Optional follow-ups (not tickets): real multi-rank DCP, a hosted MLflow server, or a goodput-vs-N chart that *also* spawns N processes — only if a new question needs that fidelity. 
